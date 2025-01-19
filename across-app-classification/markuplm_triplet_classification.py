@@ -1,7 +1,10 @@
 import torch
 from torch.backends import mps
 import torch.optim as optim
-from utils import (
+import sys
+sys.path.append("/Users/kasun/Documents/uni/semester-4/thesis/NDD")
+
+from utils.utils_package  import (
     set_all_seeds,
     initialize_weights,
     save_results_to_excel,
@@ -47,10 +50,10 @@ if __name__ == "__main__":
 
     chunk_size    = 512
     batch_size    = 128
-    num_epochs    = 7
+    num_epochs    = 15
     lr            = 2e-5
     weight_decay  = 0.01
-    chunk_limit   = 5
+    chunk_limit   = 2
     overlap       = 0
     margin        = 1
 
@@ -86,8 +89,7 @@ if __name__ == "__main__":
             test_app=test_app,
             state_embeddings=state_embeddings,
             batch_size=batch_size,
-            seed=seed,
-            val_ratio=0.5
+            seed=seed
         )
 
         model = TripletSiameseNN(input_dim=final_input_dim)

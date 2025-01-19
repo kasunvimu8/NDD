@@ -320,9 +320,9 @@ def save_results_to_excel(title, results, results_dir, setting_key, overlap, bat
         "Accuracy": df["Accuracy"].mean(),
         "Precision": df["Precision"].mean(),
         "Recall": df["Recall"].mean(),
-        "F1 Score (Weighted Avg)": df["F1 Score (Weighted Avg)"].mean(),
         "F1_Class 0": df["F1_Class 0"].mean(),
         "F1_Class 1": df["F1_Class 1"].mean(),
+        "F1 Score (Weighted Avg)": df["F1 Score (Weighted Avg)"].mean(),
     }
     summary_df = pd.DataFrame([summary_row])
 
@@ -511,13 +511,8 @@ def prepare_datasets_and_loaders_bce(
     test_app,
     state_embeddings,
     batch_size=32,
-    seed=42,
-    val_ratio=0.5
+    seed=42
 ):
-    """
-    Splits pairs_data so that test_app => val + test (50/50),
-    while all other apps => train.
-    """
     pairs_by_app = defaultdict(list)
     for d in pairs_data:
         pairs_by_app[d["appname"]].append(d)
@@ -531,20 +526,23 @@ def prepare_datasets_and_loaders_bce(
         if a != test_app:
             train_pairs.extend(pairs_by_app[a])
 
-    test_pairs_full = pairs_by_app[test_app]
-    random.shuffle(test_pairs_full)
-    half = int(len(test_pairs_full) * val_ratio)
-    val_pairs  = test_pairs_full[:half]
-    test_pairs = test_pairs_full[half:]
+    test_pairs = pairs_by_app[test_app]
+    random.shuffle(test_pairs)
+
+    random.seed(seed)
+    random.shuffle(train_pairs)
+    split_idx = int(len(train_pairs) * 0.9)
+    new_train_pairs = train_pairs[:split_idx]  # 90% for training
+    val_pairs = train_pairs[split_idx:]  # 10% for validation
 
     random.seed(seed)
     random.shuffle(train_pairs)
 
     print(f" trained pairs length: {len(train_pairs)}")
 
-    train_dataset = PairDataset(train_pairs, state_embeddings)
+    train_dataset = PairDataset(new_train_pairs, state_embeddings)
     val_dataset   = PairDataset(val_pairs, state_embeddings)
-    test_dataset  = PairDataset(test_pairs_full, state_embeddings)
+    test_dataset  = PairDataset(test_pairs, state_embeddings)
 
     g = torch.Generator().manual_seed(seed)
 
@@ -655,9 +653,9 @@ def test_model_bce(model, dataloader, device, threshold=0.5):
         "Accuracy": accuracy,
         "Precision": precision,
         "Recall": recall,
-        "F1 Score (Weighted Avg)": f1_weighted,
         "F1_Class 0": f1_vals[0] if len(f1_vals) > 0 else 0.0,
-        "F1_Class 1": f1_vals[1] if len(f1_vals) > 1 else 0.0
+        "F1_Class 1": f1_vals[1] if len(f1_vals) > 1 else 0.0,
+        "F1 Score (Weighted Avg)": f1_weighted,
     }
     return metrics
 
@@ -800,13 +798,8 @@ def prepare_datasets_and_loaders_triplets(
     test_app,
     state_embeddings,
     batch_size=32,
-    seed=42,
-    val_ratio=0.5
+    seed=42
 ):
-    """
-    Splits pairs_data so that test_app => val + test (50/50),
-    while all other apps => train.
-    """
     pairs_by_app = defaultdict(list)
     for d in pairs_data:
         pairs_by_app[d["appname"]].append(d)
@@ -820,9 +813,16 @@ def prepare_datasets_and_loaders_triplets(
         if a != test_app:
             train_pairs.extend(pairs_by_app[a])
 
-    train_triplets = create_triplets(train_pairs)
+    test_pairs = pairs_by_app[test_app]
+    random.shuffle(test_pairs)
+
     random.seed(seed)
-    random.shuffle(train_triplets)
+    random.shuffle(train_pairs)
+    split_idx = int(len(train_pairs) * 0.9)
+    new_train_pairs = train_pairs[:split_idx]  # 90% for training
+    val_pairs = train_pairs[split_idx:]  # 10% for validation
+
+    train_triplets = create_triplets(new_train_pairs)
 
     train_dataset = TripletDataset(train_triplets, state_embeddings)
     g = torch.Generator().manual_seed(seed)
@@ -836,15 +836,8 @@ def prepare_datasets_and_loaders_triplets(
         collate_fn=triplet_collate_fn
     )
 
-    test_pairs_full = pairs_by_app[test_app]
-    random.seed(seed)
-    random.shuffle(test_pairs_full)
-    half = int(len(test_pairs_full) * val_ratio)
-    val_pairs = test_pairs_full[:half]
-    test_pairs = test_pairs_full[half:]
-
     val_dataset = PairDataset(val_pairs, state_embeddings)
-    test_dataset = PairDataset(test_pairs_full, state_embeddings)
+    test_dataset = PairDataset(test_pairs, state_embeddings)
 
     val_loader = DataLoader(
         val_dataset,
@@ -971,9 +964,9 @@ def test_model_triplets(model, test_loader, device, threshold=0.5):
         "Accuracy": accuracy,
         "Precision": precision,
         "Recall": recall,
-        "F1 Score (Weighted Avg)": f1_weighted,
         "F1_Class 0": f1_vals[0] if len(f1_vals) > 0 else 0.0,
-        "F1_Class 1": f1_vals[1] if len(f1_vals) > 1 else 0.0
+        "F1_Class 1": f1_vals[1] if len(f1_vals) > 1 else 0.0,
+        "F1 Score (Weighted Avg)": f1_weighted,
     }
     return metrics_out
 
@@ -1215,12 +1208,13 @@ def embed_states_fixed_length_bert(state_chunks, tokenizer, bert_model, device):
     return state_embeddings, hidden_size
 
 def run_embedding_pipeline_bert(
+        bert_model,
+        tokenizer,
         pairs_data,
         dom_root_dir,
         chunk_size,
         overlap,
         device,
-        bert_model_name="bert-large-uncased",
         chunk_threshold=5
 ):
 
@@ -1236,8 +1230,6 @@ def run_embedding_pipeline_bert(
         return None, 0
 
     # 2) Load BERT model & tokenizer
-    tokenizer = BertTokenizer.from_pretrained(bert_model_name)
-    bert_model = BertModel.from_pretrained(bert_model_name)
     bert_model.to(device)
 
     # 3) Embed
@@ -1249,3 +1241,166 @@ def run_embedding_pipeline_bert(
     )
 
     return state_embeddings, final_input_dim
+
+##############################################################################
+#                  Across App Classification                                 #
+##############################################################################
+
+def load_single_app_pairs_from_db(db_path, table_name, appname):
+    conn = sqlite3.connect(db_path)
+    cursor = conn.cursor()
+
+    query = f"""
+            SELECT
+                appname,
+                state1,
+                state2,
+                HUMAN_CLASSIFICATION,
+                is_retained
+            FROM {table_name}
+            WHERE appname = ?
+            """
+
+    pairs = []
+    try:
+        # Use parameterized query to safely pass the appname
+        rows = cursor.execute(query, (appname,)).fetchall()
+        print(len(rows))
+        for appname_val, s1, s2, hc, retained_val in rows:
+            # Skip rows that are not retained
+            if retained_val != 1:
+                continue
+
+            label = map_labels(hc)
+            # Skip rows with unrecognized labels
+            if label is None:
+                continue
+
+            pairs.append({
+                "appname": appname_val,
+                "state1": s1,
+                "state2": s2,
+                "label": label
+            })
+    except Exception as e:
+        print("[Error] load_pairs_from_db:", e)
+    finally:
+        conn.close()
+
+    return pairs
+
+def prepare_datasets_and_loaders_within_app_bce(
+    app_pairs,
+    state_embeddings,
+    batch_size,
+    seed,
+    train_ratio=0.8,
+    val_ratio=0.1
+):
+    random.seed(seed)
+    random.shuffle(app_pairs)
+
+    total_len = len(app_pairs)
+    if total_len == 0:
+        return None, None, None
+
+    # Compute split sizes
+    train_size = int(train_ratio * total_len)
+    val_size   = int(val_ratio * total_len)
+
+    # Create splits
+    train_pairs = app_pairs[:train_size]
+    val_pairs   = app_pairs[train_size : train_size + val_size]
+    test_pairs  = app_pairs[train_size + val_size :]
+
+    # Create datasets
+    train_dataset = PairDataset(train_pairs, state_embeddings)
+    val_dataset   = PairDataset(val_pairs, state_embeddings)
+    test_dataset  = PairDataset(test_pairs, state_embeddings)
+
+    # Create DataLoaders
+    g = torch.Generator().manual_seed(seed)
+
+    train_loader = DataLoader(
+        train_dataset,
+        batch_size=batch_size,
+        shuffle=True,
+        num_workers=0,
+        generator=g,
+        collate_fn=pair_collate_fn
+    )
+    val_loader = DataLoader(
+        val_dataset,
+        batch_size=batch_size,
+        shuffle=False,
+        num_workers=0,
+        collate_fn=pair_collate_fn
+    )
+    test_loader = DataLoader(
+        test_dataset,
+        batch_size=batch_size,
+        shuffle=False,
+        num_workers=0,
+        collate_fn=pair_collate_fn
+    )
+
+    return train_loader, val_loader, test_loader
+
+def prepare_datasets_and_loaders_within_app_triplet(
+    app_pairs,
+    state_embeddings,
+    batch_size,
+    seed,
+    train_ratio=0.8,
+    val_ratio=0.1
+):
+    random.seed(seed)
+    random.shuffle(app_pairs)
+
+    total_len = len(app_pairs)
+    if total_len == 0:
+        return None, None, None
+
+    # Compute split sizes
+    train_size = int(train_ratio * total_len)
+    val_size = int(val_ratio * total_len)
+
+    # Create splits
+    train_pairs = app_pairs[:train_size]
+    val_pairs = app_pairs[train_size: train_size + val_size]
+    test_pairs = app_pairs[train_size + val_size:]
+
+    train_triplets = create_triplets(train_pairs)
+
+    train_dataset = TripletDataset(train_triplets, state_embeddings)
+    g = torch.Generator().manual_seed(seed)
+
+    train_loader = DataLoader(
+        train_dataset,
+        batch_size=batch_size,
+        shuffle=True,
+        num_workers=0,
+        generator=g,
+        collate_fn=triplet_collate_fn
+    )
+
+    val_dataset = PairDataset(val_pairs, state_embeddings)
+    test_dataset = PairDataset(test_pairs, state_embeddings)
+
+    val_loader = DataLoader(
+        val_dataset,
+        batch_size=batch_size,
+        shuffle=False,
+        num_workers=0,
+        collate_fn=pair_collate_fn
+    )
+
+    test_loader = DataLoader(
+        test_dataset,
+        batch_size=batch_size,
+        shuffle=False,
+        num_workers=0,
+        collate_fn=pair_collate_fn
+    )
+
+    return train_loader, val_loader, test_loader

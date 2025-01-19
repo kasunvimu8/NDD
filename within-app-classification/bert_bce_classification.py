@@ -2,38 +2,37 @@ import torch
 import torch.optim as optim
 from torch.backends import mps
 import sys
+
+from transformers import AutoTokenizer, AutoModel
+
 sys.path.append("/Users/kasun/Documents/uni/semester-4/thesis/NDD")
 
-from utils.utils_package  import (
+from utils.utils_package import (
     set_all_seeds,
     initialize_weights,
     save_results_to_excel,
-    load_pairs_from_db,
-    run_embedding_pipeline_markuplm,
     SiameseNN,
-    prepare_datasets_and_loaders_bce,
     train_one_epoch_bce,
     validate_model_bce,
-    test_model_bce
+    test_model_bce,
+    prepare_datasets_and_loaders_within_app_bce, load_single_app_pairs_from_db, run_embedding_pipeline_bert
 )
 
 ##############################################################################
-#      Main Functions  MarkupLM BCE AcrossApp Classification                #
+#     Main Script: BERT BCE Within-App Classification                     #
 ##############################################################################
 
 if __name__ == "__main__":
-    # Config
     seed = 42
     set_all_seeds(seed)
 
-    # Device
+    # Device selection
     if torch.cuda.is_available():
         device = torch.device("cuda")
     elif mps.is_available():
         device = torch.device("mps")
     else:
         device = torch.device("cpu")
-
     print("[Info] Using device:", device)
 
     selected_apps = [
@@ -41,56 +40,63 @@ if __name__ == "__main__":
         'mantisbt', 'dimeshift', 'pagekit', 'phoenix','petclinic'
     ]
 
-    db_path       = "/Users/kasun/Documents/uni/semester-4/thesis/NDD/dataset/SS_refined.db"
-    table_name    = "nearduplicates"
-    dom_root_dir  = "/Users/kasun/Documents/uni/semester-4/thesis/NDD/resources/doms"
-    results_dir   = "/Users/kasun/Documents/uni/semester-4/thesis/NDD/results"
-    title         = "markuplm_acrossapp"
-    setting_key   = "standard"
+    db_path      = "/Users/kasun/Documents/uni/semester-4/thesis/NDD/dataset/SS_refined.db"
+    table_name   = "nearduplicates"
+    dom_root_dir = "/Users/kasun/Documents/uni/semester-4/thesis/NDD/resources/doms"
+    results_dir  = "/Users/kasun/Documents/uni/semester-4/thesis/NDD/results"
+    title        = "distilbert-base-uncased_withinapp"
+    setting_key  = "standard"
+    model_name   = "distilbert-base-uncased"
 
-    chunk_size    = 512
-    batch_size    = 128
-    num_epochs    = 15
-    lr            = 2e-5
-    weight_decay  = 0.01
-    chunk_limit   = 2
-    overlap       = 0
+    chunk_size   = 512
+    batch_size   = 128
+    num_epochs   = 10
+    lr           = 2e-5
+    weight_decay = 0.01
+    chunk_limit  = 2
+    overlap      = 0
 
     results = []
 
-    for test_app in selected_apps:
+    for app in selected_apps:
         print("\n=============================================")
-        print(f"[Info] Starting cross-app iteration: test_app = {test_app}")
+        print(f"[Info] Starting within-app classification for: {app}")
         print("=============================================")
 
-        all_pairs = load_pairs_from_db(db_path, table_name, selected_apps)
-        if not all_pairs:
-            print("[Warning] No data found in DB with is_retained=1. Skipping.")
-            continue
-        print(f"[Info] Total pairs in DB (retained=1) for {selected_apps}: {len(all_pairs)}")
+        tokenizer = AutoTokenizer.from_pretrained(model_name)
+        bert_model = AutoModel.from_pretrained(model_name)
 
-        state_embeddings, final_input_dim = run_embedding_pipeline_markuplm(
-            pairs_data=all_pairs,
+        app_pairs = load_single_app_pairs_from_db(db_path, table_name, app)
+        if not app_pairs:
+            print(f"[Warning] No data found for app={app}. Skipping.")
+            break
+        print(f"[Info] Total pairs in DB (retained=1) for {app}: {len(app_pairs)}")
+
+        state_embeddings, final_input_dim = run_embedding_pipeline_bert(
+            tokenizer=tokenizer,
+            bert_model=bert_model,
+            pairs_data=app_pairs,
             dom_root_dir=dom_root_dir,
             chunk_size=chunk_size,
             overlap=overlap,
             device=device,
-            markup_model_name="microsoft/markuplm-base",
             chunk_threshold=chunk_limit
         )
+
         if not state_embeddings or (final_input_dim == 0):
             print("[Warning] No embeddings found. Skipping.")
             continue
 
-        train_loader, val_loader, test_loader = prepare_datasets_and_loaders_bce(
-            all_pairs,
-            test_app=test_app,
+        train_loader, val_loader, test_loader = prepare_datasets_and_loaders_within_app_bce(
+            app_pairs=app_pairs,
             state_embeddings=state_embeddings,
             batch_size=batch_size,
-            seed=seed
+            seed=seed,
+            train_ratio=0.8,
+            val_ratio=0.1
         )
         if not train_loader or not val_loader or not test_loader:
-            print("[Warning] Invalid DataLoaders. Skipping.")
+            print("[Warning] Data split invalid or empty. Skipping.")
             continue
 
         model = SiameseNN(input_dim=final_input_dim)
@@ -105,16 +111,16 @@ if __name__ == "__main__":
             print(f"  Epoch {epoch+1}/{num_epochs} => Train Loss: {train_loss:.4f}, Val Loss: {val_loss:.4f}")
 
         metrics_dict = test_model_bce(model, test_loader, device, threshold=0.5)
-        print(f"[Test Results] for test_app={test_app}: {metrics_dict}")
+        print(f"[Test Results] for app={app}: {metrics_dict}")
 
         row = {
-            "TestApp": test_app,
+            "TestApp": app,
             "Accuracy": metrics_dict["Accuracy"],
             "Precision": metrics_dict["Precision"],
             "Recall": metrics_dict["Recall"],
-            "F1 Score (Weighted Avg)": metrics_dict["F1 Score (Weighted Avg)"],
-            "F1_Class 0" : metrics_dict["F1_Class 0"],
-            "F1_Class 1" : metrics_dict["F1_Class 1"]
+            "F1_Class 0": metrics_dict["F1_Class 0"],
+            "F1_Class 1": metrics_dict["F1_Class 1"],
+            "F1 Score (Weighted Avg)": metrics_dict["F1 Score (Weighted Avg)"]
         }
         results.append(row)
 

@@ -1,7 +1,10 @@
 import torch
 from torch.backends import mps
 import torch.optim as optim
-from utils import (
+import sys
+sys.path.append("/Users/kasun/Documents/uni/semester-4/thesis/NDD")
+
+from utils.utils_package  import (
     set_all_seeds,
     initialize_weights,
     save_results_to_excel,
@@ -11,7 +14,7 @@ from utils import (
     train_one_epoch_triplets,
     validate_model_triplets,
     test_model_triplets,
-run_doc2vec_embedding_pipeline
+    run_doc2vec_embedding_pipeline
 )
 
 ##############################################################################
@@ -49,7 +52,7 @@ if __name__ == "__main__":
     chunk_size    = 512
     batch_size    = 128
     num_epochs    = 7
-    lr            = 2e-5
+    lr            = 5e-4
     weight_decay  = 0.01
     chunk_limit   = 5
     overlap       = 0
@@ -83,8 +86,7 @@ if __name__ == "__main__":
             test_app=test_app,
             state_embeddings=state_embeddings,
             batch_size=batch_size,
-            seed=seed,
-            val_ratio=0.5
+            seed=seed
         )
 
         model = TripletSiameseNN(input_dim=final_input_dim)
