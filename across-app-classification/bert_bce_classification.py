@@ -45,9 +45,9 @@ if __name__ == "__main__":
     table_name    = "nearduplicates"
     dom_root_dir  = "/Users/kasun/Documents/uni/semester-4/thesis/NDD/resources/doms"
     results_dir   = "/Users/kasun/Documents/uni/semester-4/thesis/NDD/results"
-    title         = "distilbert-base-uncased_acrossapp"
+    title         = "bert-base-uncased_acrossapp"
     setting_key   = "standard"
-    model_name    = "distilbert-base-uncased"
+    model_name    = "bert-base-uncased"
 
 
     chunk_size    = 512
@@ -80,7 +80,7 @@ if __name__ == "__main__":
             pairs_data=all_pairs,
             dom_root_dir=dom_root_dir,
             chunk_size=chunk_size,
-            overlap=50,
+            overlap=overlap,
             device=device,
             chunk_threshold=chunk_limit
         )

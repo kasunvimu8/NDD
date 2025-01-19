@@ -11,9 +11,9 @@ from utils.utils_package import (
     set_all_seeds,
     initialize_weights,
     save_results_to_excel,
-    test_model_bce,
     load_single_app_pairs_from_db, run_embedding_pipeline_bert,
-    prepare_datasets_and_loaders_within_app_triplet, TripletSiameseNN, train_one_epoch_triplets, validate_model_triplets
+    prepare_datasets_and_loaders_within_app_triplet, TripletSiameseNN, train_one_epoch_triplets,
+    validate_model_triplets, test_model_triplets
 )
 
 ##############################################################################
@@ -42,14 +42,14 @@ if __name__ == "__main__":
     table_name   = "nearduplicates"
     dom_root_dir = "/Users/kasun/Documents/uni/semester-4/thesis/NDD/resources/doms"
     results_dir  = "/Users/kasun/Documents/uni/semester-4/thesis/NDD/results"
-    title        = "distilbert-base-uncased_withinapp"
-    setting_key  = "standard"
-    model_name   = "distilbert-base-uncased"
+    title        = "bert-base-uncased_withinapp"
+    setting_key  = "triplet"
+    model_name   = "bert-base-uncased"
 
     chunk_size   = 512
     batch_size   = 128
     num_epochs   = 30
-    lr           = 1e-3
+    lr           = 5e-4
     weight_decay = 0.01
     chunk_limit  = 2
     overlap      = 0
@@ -118,7 +118,7 @@ if __name__ == "__main__":
             val_loss = validate_model_triplets(model, val_loader, device, threshold=0.5)
             print(f"  Epoch {epoch + 1}/{num_epochs} => Train Loss: {train_loss:.4f}, Val Loss: {val_loss:.4f}")
 
-        metrics_dict = test_model_bce(model, test_loader, device, threshold=0.5)
+        metrics_dict = test_model_triplets(model, test_loader, device, threshold=0.5)
         print(f"[Test Results] for app={app}: {metrics_dict}")
 
         row = {

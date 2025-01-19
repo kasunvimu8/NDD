@@ -44,16 +44,16 @@ if __name__ == "__main__":
     table_name   = "nearduplicates"
     dom_root_dir = "/Users/kasun/Documents/uni/semester-4/thesis/NDD/resources/doms"
     results_dir  = "/Users/kasun/Documents/uni/semester-4/thesis/NDD/results"
-    title        = "distilbert-base-uncased_withinapp"
+    title        = "bert-base-uncased_withinapp"
     setting_key  = "standard"
-    model_name   = "distilbert-base-uncased"
+    model_name   = "bert-base-uncased"
 
     chunk_size   = 512
     batch_size   = 128
-    num_epochs   = 10
-    lr           = 2e-5
+    num_epochs   = 50
+    lr           = 5e-5
     weight_decay = 0.01
-    chunk_limit  = 2
+    chunk_limit  = 5
     overlap      = 0
 
     results = []

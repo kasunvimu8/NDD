@@ -32,7 +32,7 @@ if __name__ == "__main__":
     print("[Info] Using device:", device)
 
     selected_apps = [
-        'addressbook', 'ppma', 'mrbs',
+        'addressbook', 'claroline', 'ppma', 'mrbs',
         'mantisbt', 'dimeshift', 'pagekit', 'phoenix','petclinic'
     ]
 
@@ -46,9 +46,9 @@ if __name__ == "__main__":
     chunk_size    = 512
     batch_size    = 128
     num_epochs    = 30
-    lr            = 1e-3
+    lr            = 5e-4
     weight_decay  = 0.01
-    chunk_limit   = 2
+    chunk_limit   = 5
     overlap       = 0
     margin        = 1
 
