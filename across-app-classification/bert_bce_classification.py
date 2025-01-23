@@ -45,14 +45,14 @@ if __name__ == "__main__":
     table_name    = "nearduplicates"
     dom_root_dir  = "/Users/kasun/Documents/uni/semester-4/thesis/NDD/resources/doms"
     results_dir   = "/Users/kasun/Documents/uni/semester-4/thesis/NDD/results"
-    title         = "bert-base-uncased_acrossapp"
+    title         = "microsoft_codebert-base_acrossapp"
     setting_key   = "standard"
-    model_name    = "bert-base-uncased"
+    model_name    = "microsoft/codebert-base"
 
 
     chunk_size    = 512
     batch_size    = 128
-    num_epochs    = 10
+    num_epochs    = 20
     lr            = 2e-5
     weight_decay  = 0.01
     chunk_limit   = 2
