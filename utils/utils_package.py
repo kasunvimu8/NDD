@@ -266,7 +266,13 @@ def gather_state_chunks_with_xpaths(
         unique_states.add((d["appname"], d["state1"]))
         unique_states.add((d["appname"], d["state2"]))
 
+    # track how many states get truncated
+    truncated_counts = defaultdict(int)
+    total_counts = defaultdict(int)
+
     for (appname, state_id) in unique_states:
+        total_counts[appname] += 1
+
         dom_path = os.path.join(dom_root_dir, appname, 'doms', f"{state_id}.html")
         if not os.path.exists(dom_path):
             continue
@@ -279,6 +285,7 @@ def gather_state_chunks_with_xpaths(
 
         if len(chunks) > chunk_threshold:
             chunks = chunks[:chunk_threshold]
+            truncated_counts[appname] += 1
 
         final_chunks = []
         for c in chunks:
@@ -290,6 +297,13 @@ def gather_state_chunks_with_xpaths(
             global_max_chunks = len(final_chunks)
 
         state_chunks[(appname, state_id)] = final_chunks
+
+    # Report truncated states
+    print("\n[Truncation/Cropping Report]")
+    for app in sorted(truncated_counts.keys()):
+        truncated = truncated_counts[app]
+        total = total_counts[app]
+        print(f"  App: {app}, truncated states: {truncated}/{total}")
 
     return state_chunks, global_max_chunks
 
@@ -1120,7 +1134,7 @@ def gather_state_chunks_bert( pairs_data, dom_root_dir, chunk_size, overlap, chu
     state_chunks = {}
     global_max_chunks = 0
 
-    # Optional: track how many states get truncated
+    # track how many states get truncated
     truncated_counts = defaultdict(int)
     total_counts = defaultdict(int)
 

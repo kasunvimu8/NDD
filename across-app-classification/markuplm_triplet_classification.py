@@ -50,10 +50,10 @@ if __name__ == "__main__":
 
     chunk_size    = 512
     batch_size    = 128
-    num_epochs    = 15
+    num_epochs    = 7
     lr            = 2e-5
     weight_decay  = 0.01
-    chunk_limit   = 2
+    chunk_limit   = 1
     overlap       = 0
     margin        = 1
 
