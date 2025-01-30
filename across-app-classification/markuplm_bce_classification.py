@@ -53,7 +53,7 @@ if __name__ == "__main__":
     num_epochs    = 15
     lr            = 2e-5
     weight_decay  = 0.01
-    chunk_limit   = 2
+    chunk_limit   = 1
     overlap       = 0
 
     results = []
