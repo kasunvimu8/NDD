@@ -4,7 +4,7 @@ from torch.backends import mps
 import sys
 sys.path.append("/Users/kasun/Documents/uni/semester-4/thesis/NDD")
 
-from utils.utils_package  import (
+from utils.utils_package import (
     set_all_seeds,
     initialize_weights,
     save_results_to_excel,
@@ -14,7 +14,7 @@ from utils.utils_package  import (
     validate_model_bce,
     test_model_bce,
     prepare_datasets_and_loaders_bce,
-    run_doc2vec_embedding_pipeline
+    run_doc2vec_embedding_pipeline, prepare_datasets_and_loaders_bce_balanced
 )
 
 ##############################################################################
@@ -45,7 +45,7 @@ if __name__ == "__main__":
     dom_root_dir  = "/Users/kasun/Documents/uni/semester-4/thesis/NDD/resources/doms"
     results_dir   = "/Users/kasun/Documents/uni/semester-4/thesis/NDD/results"
     title         = "doc2vec_acrossapp"
-    setting_key   = "standard-pure-text" # for hyperparameter tune
+    setting_key   = "bce-balanced"
 
     doc2vec_path  = "/Users/kasun/Documents/uni/semester-4/thesis/NDD/resources/embedding-models/content_tags_model_train_setsize300epoch50.doc2vec.model"
 
@@ -79,7 +79,7 @@ if __name__ == "__main__":
             print("[Warning] No embeddings found. Skipping.")
             continue
 
-        train_loader, val_loader, test_loader = prepare_datasets_and_loaders_bce(
+        train_loader, val_loader, test_loader = prepare_datasets_and_loaders_bce_balanced(
             all_pairs,
             test_app=test_app,
             state_embeddings=state_embeddings,

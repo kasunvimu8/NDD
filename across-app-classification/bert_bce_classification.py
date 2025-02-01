@@ -5,7 +5,7 @@ from transformers import AutoTokenizer, AutoModel
 import sys
 sys.path.append("/Users/kasun/Documents/uni/semester-4/thesis/NDD")
 
-from utils.utils_package  import (
+from utils.utils_package import (
     set_all_seeds,
     initialize_weights,
     save_results_to_excel,
@@ -15,7 +15,7 @@ from utils.utils_package  import (
     validate_model_bce,
     test_model_bce,
     prepare_datasets_and_loaders_bce,
-    run_embedding_pipeline_bert
+    run_embedding_pipeline_bert, prepare_datasets_and_loaders_bce_balanced
 )
 
 ##############################################################################
@@ -45,14 +45,14 @@ if __name__ == "__main__":
     table_name    = "nearduplicates"
     dom_root_dir  = "/Users/kasun/Documents/uni/semester-4/thesis/NDD/resources/doms"
     results_dir   = "/Users/kasun/Documents/uni/semester-4/thesis/NDD/results"
-    title         = "microsoft_codebert-base_acrossapp"
-    setting_key   = "standard"
-    model_name    = "microsoft/codebert-base"
+    title         = "bert-base_acrossapp"
+    setting_key   = "bce-balanced"
+    model_name    = "bert-base-uncased"
 
 
     chunk_size    = 512
     batch_size    = 128
-    num_epochs    = 20
+    num_epochs    = 10
     lr            = 2e-5
     weight_decay  = 0.01
     chunk_limit   = 2
@@ -89,7 +89,7 @@ if __name__ == "__main__":
             print("[Warning] No embeddings found. Skipping.")
             continue
 
-        train_loader, val_loader, test_loader = prepare_datasets_and_loaders_bce(
+        train_loader, val_loader, test_loader = prepare_datasets_and_loaders_bce_balanced(
             all_pairs,
             test_app=test_app,
             state_embeddings=state_embeddings,

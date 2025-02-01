@@ -12,7 +12,8 @@ from utils.utils_package import (
     train_one_epoch_bce,
     validate_model_bce,
     test_model_bce,
-    prepare_datasets_and_loaders_within_app_bce, load_single_app_pairs_from_db, run_embedding_pipeline_markuplm
+    prepare_datasets_and_loaders_within_app_bce, load_single_app_pairs_from_db, run_embedding_pipeline_markuplm,
+    prepare_datasets_and_loaders_within_app_bce_balanced
 )
 
 ##############################################################################
@@ -42,11 +43,11 @@ if __name__ == "__main__":
     dom_root_dir  = "/Users/kasun/Documents/uni/semester-4/thesis/NDD/resources/doms"
     results_dir   = "/Users/kasun/Documents/uni/semester-4/thesis/NDD/results"
     title         = "markuplm_withinapp"
-    setting_key   = "standard"
+    setting_key   = "bce-balanced"
 
     chunk_size    = 512
     batch_size    = 128
-    num_epochs    = 50
+    num_epochs    = 30
     lr            = 5e-5
     weight_decay  = 0.01
     chunk_limit   = 5
@@ -79,7 +80,7 @@ if __name__ == "__main__":
             print("[Warning] No embeddings found. Skipping.")
             continue
 
-        train_loader, val_loader, test_loader = prepare_datasets_and_loaders_within_app_bce(
+        train_loader, val_loader, test_loader = prepare_datasets_and_loaders_within_app_bce_balanced(
             app_pairs=app_pairs,
             state_embeddings=state_embeddings,
             batch_size=batch_size,

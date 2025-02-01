@@ -47,14 +47,14 @@ if __name__ == "__main__":
     table_name    = "nearduplicates"
     dom_root_dir  = "/Users/kasun/Documents/uni/semester-4/thesis/NDD/resources/doms"
     results_dir   = "/Users/kasun/Documents/uni/semester-4/thesis/NDD/results"
-    title         = "microsoft_codebert-base_triplet_acrossapp"
+    title         = "bert-base_triplet_acrossapp"
     setting_key   = "triplet"
-    model_name    = "microsoft/codebert-base"
+    model_name    = "bert-base-uncased"
 
     # Hyperparameters
     chunk_size    = 512
     batch_size    = 128
-    num_epochs    = 12
+    num_epochs    = 15
     lr            = 2e-5
     weight_decay  = 0.01
     chunk_limit   = 2

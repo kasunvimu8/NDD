@@ -1,7 +1,7 @@
 import os
 import random
 import re
-from collections import defaultdict
+from collections import defaultdict, Counter
 
 import numpy as np
 import torch
@@ -13,7 +13,7 @@ import pandas as pd
 from datetime import datetime
 
 from gensim.models import Doc2Vec
-from torch.utils.data import Dataset, DataLoader
+from torch.utils.data import Dataset, DataLoader, TensorDataset
 import torch.nn.functional as F
 from tqdm import tqdm
 from transformers import MarkupLMProcessor, AutoModel, BertTokenizer, BertModel
@@ -22,6 +22,7 @@ from sklearn.metrics import (
     accuracy_score, precision_score,
     recall_score, f1_score
 )
+from imblearn.over_sampling import SMOTE
 
 ####################################################
 #            Common functions and classes          #
@@ -224,6 +225,9 @@ def load_pairs_from_db(db_path, table_name, selected_apps):
     """
 
     pairs = []
+    app_class_dist = defaultdict(Counter)  # For class distribution per app
+    total_class_dist = Counter()  # For total class distribution
+
     try:
         rows = cursor.execute(query).fetchall()
         for appname, s1, s2, hc, retained_val in rows:
@@ -238,11 +242,22 @@ def load_pairs_from_db(db_path, table_name, selected_apps):
                 "state2":  s2,
                 "label":   label
             })
+            # Update class distribution for this app
+            app_class_dist[appname][label] += 1
+
+            # Update total class distribution
+            total_class_dist[label] += 1
     except Exception as e:
         print("[Error] load_pairs_from_db:", e)
     finally:
         conn.close()
 
+    # Log class distribution by app
+    for appname, dist in app_class_dist.items():
+        print(f"Class distribution for app {appname}: {dict(dist)}")
+
+    # Log total class distribution
+    print(f"Total class distribution: {dict(total_class_dist)}")
     return pairs
 
 def gather_state_chunks_with_xpaths(
@@ -575,6 +590,143 @@ def prepare_datasets_and_loaders_bce(
         num_workers=0,
         collate_fn=pair_collate_fn
     )
+    test_loader = DataLoader(
+        test_dataset,
+        batch_size=batch_size,
+        shuffle=False,
+        num_workers=0,
+        collate_fn=pair_collate_fn
+    )
+
+    return train_loader, val_loader, test_loader
+
+class SMOTEDPairDataset(Dataset):
+    def __init__(self, X, y):
+        self.X = X
+        self.y = y
+
+    def __len__(self):
+        return len(self.X)
+
+    def __getitem__(self, idx):
+        concat_emb = self.X[idx]  # shape [2*embed_dim]
+        label      = self.y[idx]
+
+        concat_emb_t = torch.tensor(concat_emb, dtype=torch.float32)
+        half_dim      = concat_emb_t.shape[0] // 2
+
+        emb1 = concat_emb_t[:half_dim]
+        emb2 = concat_emb_t[half_dim:]
+
+        return {
+            'embeddings1': emb1,
+            'embeddings2': emb2,
+            'labels': torch.tensor(label, dtype=torch.long)
+        }
+
+def prepare_datasets_and_loaders_bce_balanced(
+    pairs_data,
+    test_app,
+    state_embeddings,
+    batch_size=32,
+    seed=42
+):
+    pairs_by_app = defaultdict(list)
+    for d in pairs_data:
+        pairs_by_app[d["appname"]].append(d)
+
+    apps = list(pairs_by_app.keys())
+    if test_app not in apps:
+        test_app = apps[-1]
+
+    # Combine all apps except the test_app into training
+    train_pairs = []
+    for a in apps:
+        if a != test_app:
+            train_pairs.extend(pairs_by_app[a])
+
+    test_pairs = pairs_by_app[test_app]
+
+    # Shuffle once for test pairs
+    random.seed(seed)
+    random.shuffle(test_pairs)
+
+    # Shuffle train pairs
+    random.seed(seed)
+    random.shuffle(train_pairs)
+
+    # Split train pairs => 90% train, 10% validation
+    split_idx       = int(len(train_pairs) * 0.9)
+    new_train_pairs = train_pairs[:split_idx]
+    val_pairs       = train_pairs[split_idx:]
+
+    # --- SMOTE CHANGES START ---
+    # 1) Gather embeddings + labels from new_train_pairs
+    X_train = []
+    y_train = []
+    for pair in new_train_pairs:
+        appname = pair["appname"]
+        s1      = pair["state1"]
+        s2      = pair["state2"]
+        lbl     = pair["label"]
+        emb1    = state_embeddings.get((appname, s1))
+        emb2    = state_embeddings.get((appname, s2))
+
+        # Filter out None or mismatch
+        if emb1 is None or emb2 is None:
+            continue
+
+        # Concatenate embeddings along last dimension
+        # If emb1 and emb2 are torch Tensors, convert to numpy
+        emb1_np = emb1.cpu().numpy() if isinstance(emb1, torch.Tensor) else emb1
+        emb2_np = emb2.cpu().numpy() if isinstance(emb2, torch.Tensor) else emb2
+
+        concat_emb = np.concatenate([emb1_np, emb2_np], axis=0)
+        X_train.append(concat_emb)
+        y_train.append(lbl)
+
+    if len(X_train) == 0:
+        print("[Warning] No train samples to oversample. Check data.")
+        return None, None, None
+
+    X_train = np.array(X_train)
+    y_train = np.array(y_train)
+    print(f"Original class distribution in training data: {Counter(y_train)}")
+
+    # 2) Apply SMOTE
+    sm = SMOTE(random_state=seed)
+    X_sm, y_sm = sm.fit_resample(X_train, y_train)
+
+    # 3) Build a custom dataset from SMOTE outputs
+    train_dataset = SMOTEDPairDataset(X_sm, y_sm)
+    print(f"Oversampled class distribution after SMOTE: {Counter(y_sm)}")
+
+    # --- SMOTE CHANGES END ---
+
+    # Build validation and test datasets in the old way, no SMOTE
+    val_dataset  = PairDataset(val_pairs,  state_embeddings)
+    test_dataset = PairDataset(test_pairs, state_embeddings)
+
+    # Setup Dataloaders
+    g = torch.Generator().manual_seed(seed)
+
+    train_loader = DataLoader(
+        train_dataset,
+        batch_size=batch_size,
+        shuffle=True,
+        num_workers=0,
+        generator=g,
+        collate_fn=pair_collate_fn
+    )
+
+    val_loader = DataLoader(
+        val_dataset,
+        batch_size=batch_size,
+        shuffle=False,
+        num_workers=0,
+        collate_fn=pair_collate_fn
+    )
+
     test_loader = DataLoader(
         test_dataset,
         batch_size=batch_size,
@@ -1350,6 +1502,103 @@ def prepare_datasets_and_loaders_within_app_bce(
         num_workers=0,
         collate_fn=pair_collate_fn
     )
+    test_loader = DataLoader(
+        test_dataset,
+        batch_size=batch_size,
+        shuffle=False,
+        num_workers=0,
+        collate_fn=pair_collate_fn
+    )
+
+    return train_loader, val_loader, test_loader
+
+def prepare_datasets_and_loaders_within_app_bce_balanced(
+    app_pairs,
+    state_embeddings,
+    batch_size,
+    seed,
+    train_ratio=0.8,
+    val_ratio=0.1
+):
+    random.seed(seed)
+    random.shuffle(app_pairs)
+
+    total_len = len(app_pairs)
+    if total_len == 0:
+        return None, None, None
+
+    # Compute split sizes
+    train_size = int(train_ratio * total_len)
+    val_size   = int(val_ratio * total_len)
+
+    # Create splits
+    train_pairs = app_pairs[:train_size]
+    val_pairs   = app_pairs[train_size : train_size + val_size]
+    test_pairs  = app_pairs[train_size + val_size :]
+
+    # SMOTE for class imbalance ---
+    X_train = []
+    y_train = []
+    for pair in train_pairs:
+        appname = pair["appname"]
+        s1      = pair["state1"]
+        s2      = pair["state2"]
+        lbl     = pair["label"]
+        emb1    = state_embeddings.get((appname, s1))
+        emb2    = state_embeddings.get((appname, s2))
+
+        if emb1 is None or emb2 is None:
+            continue
+
+        # Concatenate embeddings along last dimension
+        emb1_np = emb1.cpu().numpy() if isinstance(emb1, torch.Tensor) else emb1
+        emb2_np = emb2.cpu().numpy() if isinstance(emb2, torch.Tensor) else emb2
+
+        concat_emb = np.concatenate([emb1_np, emb2_np], axis=0)
+        X_train.append(concat_emb)
+        y_train.append(lbl)
+
+    if len(X_train) == 0:
+        print("[Warning] No train samples to oversample. Check data.")
+        return None, None, None
+
+    X_train = np.array(X_train)
+    y_train = np.array(y_train)
+    print(f"Original class distribution in training data: {Counter(y_train)}")
+
+    # 2) Apply SMOTE
+    sm = SMOTE(random_state=seed)
+    X_sm, y_sm = sm.fit_resample(X_train, y_train)
+
+    # 3) Build a oversampled training data
+    train_dataset = SMOTEDPairDataset(X_sm, y_sm)
+    print(f"Oversampled class distribution after SMOTE: {Counter(y_sm)}")
+    # --- SMOTE CHANGES END ---
+
+    # Build validation and test datasets without SMOTE
+    val_dataset  = PairDataset(val_pairs,  state_embeddings)
+    test_dataset = PairDataset(test_pairs, state_embeddings)
+
+    # Setup Dataloaders
+    g = torch.Generator().manual_seed(seed)
+
+    train_loader = DataLoader(
+        train_dataset,
+        batch_size=batch_size,
+        shuffle=True,
+        num_workers=0,
+        generator=g,
+        collate_fn=pair_collate_fn
+    )
+
+    val_loader = DataLoader(
+        val_dataset,
+        batch_size=batch_size,
+        shuffle=False,
+        num_workers=0,
+        collate_fn=pair_collate_fn
+    )
+
     test_loader = DataLoader(
         test_dataset,
         batch_size=batch_size,
