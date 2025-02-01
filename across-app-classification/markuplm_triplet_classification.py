@@ -2,13 +2,13 @@ import torch
 from torch.backends import mps
 import torch.optim as optim
 import sys
+sys.path.append("/Users/kasun/Documents/uni/semester-4/thesis/NDD")
+
 from scripts.datasets import prepare_datasets_and_loaders_across_app_triplet
 from scripts.embedding import run_embedding_pipeline_markuplm
 from scripts.test import test_model_triplet
 from scripts.train import train_one_epoch_triplet
 from scripts.validate import validate_model_triplet
-
-sys.path.append("/Users/kasun/Documents/uni/semester-4/thesis/NDD")
 from scripts.networks import TripletSiameseNN
 from scripts.utils  import (
     set_all_seeds,

@@ -2,13 +2,13 @@ import torch
 import torch.optim as optim
 from torch.backends import mps
 import sys
+sys.path.append("/Users/kasun/Documents/uni/semester-4/thesis/NDD")
+
 from scripts.datasets import prepare_datasets_and_loaders_across_app_contrastive
 from scripts.embedding import run_embedding_pipeline_doc2vec
 from scripts.test import test_model_contrastive
 from scripts.train import train_one_epoch_contrastive
 from scripts.validate import validate_model_contrastive
-
-sys.path.append("/Users/kasun/Documents/uni/semester-4/thesis/NDD")
 from scripts.networks import ContrastiveSiameseNN
 from scripts.utils import (
     set_all_seeds,
