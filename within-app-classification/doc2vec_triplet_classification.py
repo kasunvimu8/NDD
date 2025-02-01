@@ -2,16 +2,19 @@ import torch
 import torch.optim as optim
 from torch.backends import mps
 import sys
-sys.path.append("/Users/kasun/Documents/uni/semester-4/thesis/NDD")
+from scripts.datasets import prepare_datasets_and_loaders_within_app_triplet
+from scripts.embedding import run_embedding_pipeline_doc2vec
+from scripts.test import test_model_triplet
+from scripts.train import train_one_epoch_triplet
+from scripts.validate import validate_model_triplet
 
-from utils.utils_package import (
+sys.path.append("/Users/kasun/Documents/uni/semester-4/thesis/NDD")
+from scripts.networks import TripletSiameseNN
+from scripts.utils import (
     set_all_seeds,
     initialize_weights,
     save_results_to_excel,
-    run_doc2vec_embedding_pipeline,
-    load_single_app_pairs_from_db, TripletSiameseNN,
-    train_one_epoch_triplets, validate_model_triplets, test_model_triplets,
-    prepare_datasets_and_loaders_within_app_triplet
+    load_single_app_pairs_from_db,
 )
 
 ##############################################################################
@@ -46,11 +49,11 @@ if __name__ == "__main__":
     doc2vec_path = "/Users/kasun/Documents/uni/semester-4/thesis/NDD/resources/embedding-models/content_tags_model_train_setsize300epoch50.doc2vec.model"
 
     batch_size    = 128
-    num_epochs    = 10
+    num_epochs    = 30
     lr            = 1e-3
     weight_decay  = 0.01
-    chunk_limit   = '-'
-    overlap       = '-'
+    chunk_limit   = 5
+    overlap       = 0
     margin        = 1
 
     results = []
@@ -66,7 +69,7 @@ if __name__ == "__main__":
             break
         print(f"[Info] Total pairs in DB (retained=1) for {app}: {len(app_pairs)}")
 
-        state_embeddings, final_input_dim = run_doc2vec_embedding_pipeline(
+        state_embeddings, final_input_dim = run_embedding_pipeline_doc2vec(
             pairs_data=app_pairs,
             dom_root_dir=dom_root_dir,
             doc2vec_model_path=doc2vec_path
@@ -94,7 +97,7 @@ if __name__ == "__main__":
         optimizer = optim.Adam(model.parameters(), lr=lr, weight_decay=weight_decay)
 
         for epoch in range(num_epochs):
-            train_loss = train_one_epoch_triplets(
+            train_loss = train_one_epoch_triplet(
                 model,
                 train_loader,
                 optimizer,
@@ -104,10 +107,10 @@ if __name__ == "__main__":
                 margin=margin
             )
 
-            val_loss = validate_model_triplets(model, val_loader, device, threshold=0.5)
+            val_loss = validate_model_triplet(model, val_loader, device, threshold=0.5)
             print(f"  Epoch {epoch+1}/{num_epochs} => Train Loss: {train_loss:.4f}, Val Loss: {val_loss:.4f}")
 
-        metrics_dict = test_model_triplets(model, test_loader, device, threshold=0.5)
+        metrics_dict = test_model_triplet(model, test_loader, device, threshold=0.5)
         print(f"[Test Results] for app={app}: {metrics_dict}")
 
         row = {

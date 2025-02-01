@@ -2,19 +2,19 @@ import torch
 import torch.optim as optim
 from torch.backends import mps
 import sys
-sys.path.append("/Users/kasun/Documents/uni/semester-4/thesis/NDD")
+from scripts.datasets import prepare_datasets_and_loaders_across_app_contrastive
+from scripts.embedding import run_embedding_pipeline_doc2vec
+from scripts.test import test_model_contrastive
+from scripts.train import train_one_epoch_contrastive
+from scripts.validate import validate_model_contrastive
 
-from utils.utils_package import (
+sys.path.append("/Users/kasun/Documents/uni/semester-4/thesis/NDD")
+from scripts.networks import ContrastiveSiameseNN
+from scripts.utils import (
     set_all_seeds,
     initialize_weights,
     save_results_to_excel,
     load_pairs_from_db,
-    SiameseNN,
-    train_one_epoch_bce,
-    validate_model_bce,
-    test_model_bce,
-    prepare_datasets_and_loaders_bce,
-    run_doc2vec_embedding_pipeline, prepare_datasets_and_loaders_bce_balanced
 )
 
 ##############################################################################
@@ -53,8 +53,8 @@ if __name__ == "__main__":
     num_epochs    = 10
     lr            = 2e-5
     weight_decay  = 0.01
-    chunk_limit   = '-'
-    overlap       = '-'
+    chunk_limit   = 2
+    overlap       = 0
 
     results = []
 
@@ -69,7 +69,7 @@ if __name__ == "__main__":
             continue
         print(f"[Info] Total pairs in DB (retained=1) for {selected_apps}: {len(all_pairs)}")
 
-        state_embeddings, final_input_dim = run_doc2vec_embedding_pipeline(
+        state_embeddings, final_input_dim = run_embedding_pipeline_doc2vec(
             pairs_data=all_pairs,
             dom_root_dir=dom_root_dir,
             doc2vec_model_path=doc2vec_path,
@@ -79,7 +79,7 @@ if __name__ == "__main__":
             print("[Warning] No embeddings found. Skipping.")
             continue
 
-        train_loader, val_loader, test_loader = prepare_datasets_and_loaders_bce_balanced(
+        train_loader, val_loader, test_loader = prepare_datasets_and_loaders_across_app_contrastive(
             all_pairs,
             test_app=test_app,
             state_embeddings=state_embeddings,
@@ -90,22 +90,20 @@ if __name__ == "__main__":
             print("[Warning] Invalid DataLoaders. Skipping.")
             continue
 
-        model = SiameseNN(input_dim=final_input_dim)
+        model = ContrastiveSiameseNN(input_dim=final_input_dim)
         initialize_weights(model, seed)
         model.to(device)
 
         optimizer = optim.Adam(model.parameters(), lr=lr, weight_decay=weight_decay)
 
         for epoch in range(num_epochs):
-            train_loss = train_one_epoch_bce(model, train_loader, optimizer, device, epoch, num_epochs)
-            val_loss   = validate_model_bce(model, val_loader, device)
+            train_loss = train_one_epoch_contrastive(model, train_loader, optimizer, device, epoch, num_epochs)
+            val_loss   = validate_model_contrastive(model, val_loader, device)
             print(f"  Epoch {epoch+1}/{num_epochs} => Train Loss: {train_loss:.4f}, Val Loss: {val_loss:.4f}")
 
-        # 5) Evaluate on test
-        metrics_dict = test_model_bce(model, test_loader, device, threshold=0.5)
+        metrics_dict = test_model_contrastive(model, test_loader, device, threshold=0.5)
         print(f"[Test Results] for test_app={test_app}: {metrics_dict}")
 
-        # Collect results for Excel
         row = {
             "TestApp": test_app,
             "Accuracy": metrics_dict["Accuracy"],

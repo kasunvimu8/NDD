@@ -2,26 +2,25 @@ import torch
 from torch.backends import mps
 import torch.optim as optim
 import sys
-sys.path.append("/Users/kasun/Documents/uni/semester-4/thesis/NDD")
+from scripts.datasets import prepare_datasets_and_loaders_across_app_triplet
+from scripts.embedding import run_embedding_pipeline_markuplm
+from scripts.test import test_model_triplet
+from scripts.train import train_one_epoch_triplet
+from scripts.validate import validate_model_triplet
 
-from utils.utils_package  import (
+sys.path.append("/Users/kasun/Documents/uni/semester-4/thesis/NDD")
+from scripts.networks import TripletSiameseNN
+from scripts.utils  import (
     set_all_seeds,
     initialize_weights,
     save_results_to_excel,
-    load_pairs_from_db,
-    run_embedding_pipeline_markuplm,
-    TripletSiameseNN,
-    prepare_datasets_and_loaders_triplets,
-    train_one_epoch_triplets,
-    validate_model_triplets,
-    test_model_triplets
+    load_pairs_from_db
 )
 
 
 ##############################################################################
 #      Main Functions  MarkupLM Triplet AcrossApp Classification             #
 ##############################################################################
-
 
 if __name__ == "__main__":
     seed = 42
@@ -50,7 +49,7 @@ if __name__ == "__main__":
 
     chunk_size    = 512
     batch_size    = 128
-    num_epochs    = 7
+    num_epochs    = 15
     lr            = 2e-5
     weight_decay  = 0.01
     chunk_limit   = 1
@@ -84,7 +83,7 @@ if __name__ == "__main__":
             print("[Warning] No embeddings found. Skipping.")
             continue
 
-        train_loader, val_loader, test_loader = prepare_datasets_and_loaders_triplets(
+        train_loader, val_loader, test_loader = prepare_datasets_and_loaders_across_app_triplet(
             all_pairs,
             test_app=test_app,
             state_embeddings=state_embeddings,
@@ -99,7 +98,7 @@ if __name__ == "__main__":
         optimizer = optim.Adam(model.parameters(), lr=lr, weight_decay=weight_decay)
 
         for epoch in range(num_epochs):
-            train_loss = train_one_epoch_triplets(
+            train_loss = train_one_epoch_triplet(
                 model,
                 train_loader,
                 optimizer,
@@ -109,10 +108,10 @@ if __name__ == "__main__":
                 margin=margin
             )
 
-            val_loss = validate_model_triplets(model, val_loader, device, threshold=0.5)
+            val_loss = validate_model_triplet(model, val_loader, device, threshold=0.5)
             print(f"  Epoch {epoch+1}/{num_epochs} => Train Loss: {train_loss:.4f}, Val Loss: {val_loss:.4f}")
 
-        metrics_dict = test_model_triplets(model, test_loader, device, threshold=0.5)
+        metrics_dict = test_model_triplet(model, test_loader, device, threshold=0.5)
         print(f"[Test Results] for test_app={test_app}: {metrics_dict}")
 
         row = {

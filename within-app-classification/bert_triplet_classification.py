@@ -2,18 +2,20 @@ import torch
 import torch.optim as optim
 from torch.backends import mps
 import sys
-
 from transformers import AutoTokenizer, AutoModel
+from scripts.datasets import prepare_datasets_and_loaders_within_app_triplet
+from scripts.embedding import run_embedding_pipeline_bert
+from scripts.test import test_model_triplet
+from scripts.train import train_one_epoch_triplet
+from scripts.validate import validate_model_triplet
 
 sys.path.append("/Users/kasun/Documents/uni/semester-4/thesis/NDD")
-
-from utils.utils_package import (
+from scripts.networks import TripletSiameseNN
+from scripts.utils import (
     set_all_seeds,
     initialize_weights,
     save_results_to_excel,
-    load_single_app_pairs_from_db, run_embedding_pipeline_bert,
-    prepare_datasets_and_loaders_within_app_triplet, TripletSiameseNN, train_one_epoch_triplets,
-    validate_model_triplets, test_model_triplets
+    load_single_app_pairs_from_db,
 )
 
 ##############################################################################
@@ -51,7 +53,7 @@ if __name__ == "__main__":
     num_epochs   = 30
     lr           = 5e-4
     weight_decay = 0.01
-    chunk_limit  = 2
+    chunk_limit  = 5
     overlap      = 0
     margin       = 1
 
@@ -105,7 +107,7 @@ if __name__ == "__main__":
         optimizer = optim.Adam(model.parameters(), lr=lr, weight_decay=weight_decay)
 
         for epoch in range(num_epochs):
-            train_loss = train_one_epoch_triplets(
+            train_loss = train_one_epoch_triplet(
                 model,
                 train_loader,
                 optimizer,
@@ -115,10 +117,10 @@ if __name__ == "__main__":
                 margin=margin
             )
 
-            val_loss = validate_model_triplets(model, val_loader, device, threshold=0.5)
+            val_loss = validate_model_triplet(model, val_loader, device, threshold=0.5)
             print(f"  Epoch {epoch + 1}/{num_epochs} => Train Loss: {train_loss:.4f}, Val Loss: {val_loss:.4f}")
 
-        metrics_dict = test_model_triplets(model, test_loader, device, threshold=0.5)
+        metrics_dict = test_model_triplet(model, test_loader, device, threshold=0.5)
         print(f"[Test Results] for app={app}: {metrics_dict}")
 
         row = {

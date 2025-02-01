@@ -1,0 +1,1 @@
+print("Scripts package initialized")
