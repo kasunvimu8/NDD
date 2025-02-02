@@ -1,7 +1,8 @@
 import torch
 import torch.optim as optim
-from torch.backends import mps
 import sys
+import os
+import time
 sys.path.append("/Users/kasun/Documents/uni/semester-4/thesis/NDD")
 
 from scripts.datasets import prepare_datasets_and_loaders_across_app_contrastive
@@ -14,38 +15,33 @@ from scripts.utils import (
     set_all_seeds,
     initialize_weights,
     save_results_to_excel,
-    load_pairs_from_db
+    load_pairs_from_db,
+    initialize_device
 )
 
 ##############################################################################
-#      Main Functions  MarkupLM BCE AcrossApp Classification                #
+#      Main Functions  MarkupLM Contrastive AcrossApp Classification                #
 ##############################################################################
 
 if __name__ == "__main__":
     seed = 42
     set_all_seeds(seed)
-
-    # Device
-    if torch.cuda.is_available():
-        device = torch.device("cuda")
-    elif mps.is_available():
-        device = torch.device("mps")
-    else:
-        device = torch.device("cpu")
-
-    print("[Info] Using device:", device)
+    device = initialize_device()
 
     selected_apps = [
         'addressbook', 'claroline', 'ppma', 'mrbs',
         'mantisbt', 'dimeshift', 'pagekit', 'phoenix','petclinic'
     ]
 
-    db_path       = "/Users/kasun/Documents/uni/semester-4/thesis/NDD/dataset/SS_refined.db"
+    base_path     = "/Users/kasun/Documents/uni/semester-4/thesis/NDD"
     table_name    = "nearduplicates"
-    dom_root_dir  = "/Users/kasun/Documents/uni/semester-4/thesis/NDD/resources/doms"
-    results_dir   = "/Users/kasun/Documents/uni/semester-4/thesis/NDD/results"
-    title         = "markuplm_acrossapp"
-    setting_key   = "bce-balanced"
+    db_path       = f"{base_path}/dataset/SS_refined.db"
+    dom_root_dir  = f"{base_path}/resources/doms"
+    results_dir   = f"{base_path}/results"
+    model_dir     = f"{base_path}/models"
+    title         = "acrossapp_markuplm"
+    setting_key   = "contrastive"
+    model_name    = "microsoft/markuplm-base"
 
     chunk_size    = 512
     batch_size    = 128
@@ -61,6 +57,9 @@ if __name__ == "__main__":
         print("\n=============================================")
         print(f"[Info] Starting cross-app iteration: test_app = {test_app}")
         print("=============================================")
+
+        model_filename = f"{title}_{setting_key}_{test_app}_cl_{chunk_limit}_bs_{batch_size}_ep_{num_epochs}_lr_{lr}_wd_{weight_decay}.pt"
+        model_file = os.path.join(model_dir, model_filename)
 
         all_pairs = load_pairs_from_db(db_path, table_name, selected_apps)
         if not all_pairs:
@@ -98,10 +97,22 @@ if __name__ == "__main__":
 
         optimizer = optim.Adam(model.parameters(), lr=lr, weight_decay=weight_decay)
 
-        for epoch in range(num_epochs):
-            train_loss = train_one_epoch_contrastive(model, train_loader, optimizer, device, epoch, num_epochs)
-            val_loss   = validate_model_contrastive(model, val_loader, device)
-            print(f"  Epoch {epoch+1}/{num_epochs} => Train Loss: {train_loss:.4f}, Val Loss: {val_loss:.4f}")
+        if os.path.exists(model_file):
+            print(f"[Info] Found saved model for {test_app} at {model_file}. Loading model and skipping training.")
+            model.load_state_dict(torch.load(model_file, weights_only=True))
+            training_time = "N/A"
+        else:
+            print(f"[Info] No saved model for {test_app}. Training will start.")
+            start_time = time.time()
+            for epoch in range(num_epochs):
+                train_loss = train_one_epoch_contrastive(model, train_loader, optimizer, device, epoch, num_epochs)
+                val_loss = validate_model_contrastive(model, val_loader, device)
+                print(f"  Epoch {epoch + 1}/{num_epochs} => Train Loss: {train_loss:.4f}, Val Loss: {val_loss:.4f}")
+
+            training_time = time.time() - start_time
+            os.makedirs("models", exist_ok=True)
+            torch.save(model.state_dict(), model_file)
+            print(f"[Info] Model saved to {model_file}")
 
         metrics_dict = test_model_contrastive(model, test_loader, device, threshold=0.5)
         print(f"[Test Results] for test_app={test_app}: {metrics_dict}")
@@ -113,7 +124,8 @@ if __name__ == "__main__":
             "Recall": metrics_dict["Recall"],
             "F1 Score (Weighted Avg)": metrics_dict["F1 Score (Weighted Avg)"],
             "F1_Class 0" : metrics_dict["F1_Class 0"],
-            "F1_Class 1" : metrics_dict["F1_Class 1"]
+            "F1_Class 1" : metrics_dict["F1_Class 1"],
+            "TrainingTime": training_time
         }
         results.append(row)
 

@@ -404,7 +404,7 @@ def prepare_datasets_and_loaders_within_app_contrastive(
     val_pairs   = app_pairs[train_size : train_size + val_size]
     test_pairs  = app_pairs[train_size + val_size :]
 
-    # SMOTE for class imbalance ---
+    # SMOTE for class imbalance
     X_train = []
     y_train = []
     for pair in train_pairs:
@@ -434,14 +434,11 @@ def prepare_datasets_and_loaders_within_app_contrastive(
     y_train = np.array(y_train)
     print(f"Original class distribution in training data: {Counter(y_train)}")
 
-    # 2) Apply SMOTE
     sm = SMOTE(random_state=seed)
     X_sm, y_sm = sm.fit_resample(X_train, y_train)
 
-    # 3) Build a oversampled training data
     train_dataset = SMOTEDPairDataset(X_sm, y_sm)
     print(f"Oversampled class distribution after SMOTE: {Counter(y_sm)}")
-    # --- SMOTE CHANGES END ---
 
     # Build validation and test datasets without SMOTE
     val_dataset  = PairDataset(val_pairs,  state_embeddings)

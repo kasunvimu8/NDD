@@ -11,10 +11,23 @@ from bs4 import BeautifulSoup, Comment, NavigableString
 import pandas as pd
 from datetime import datetime
 import sqlite3
+from torch.backends import mps
+
 
 ####################################################
 #            Common functions                      #
 ####################################################
+
+def initialize_device():
+    if torch.cuda.is_available():
+        device = torch.device("cuda")
+    elif mps.is_available():
+        device = torch.device("mps")
+    else:
+        device = torch.device("cpu")
+
+    print("[Info] Using device:", device)
+    return device
 
 def set_all_seeds(seed):
     """
@@ -279,6 +292,14 @@ def save_results_to_excel(title, results, results_dir, setting_key, overlap, bat
         "F1_Class 1": df["F1_Class 1"].mean(),
         "F1 Score (Weighted Avg)": df["F1 Score (Weighted Avg)"].mean(),
     }
+
+    if "TrainingTime" in df.columns:
+        # Convert training times to numeric (ignoring non-numeric values like "N/A")
+        numeric_times = pd.to_numeric(df["TrainingTime"], errors="coerce")
+        if numeric_times.count() > 0:
+            summary_row["TrainingTime"] = numeric_times.mean()
+        else:
+            summary_row["TrainingTime"] = "N/A"
     summary_df = pd.DataFrame([summary_row])
 
     # Concatenate the summary row to the original DataFrame

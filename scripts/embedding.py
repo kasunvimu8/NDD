@@ -307,7 +307,7 @@ def run_embedding_pipeline_markuplm(
     chunk_size,
     overlap,
     device,
-    markup_model_name="microsoft/markuplm-base",
+    markup_model_name,
     chunk_threshold=5
 ):
     """
