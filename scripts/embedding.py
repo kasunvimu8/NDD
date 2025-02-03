@@ -6,17 +6,27 @@ from gensim.models import Doc2Vec
 from tqdm import tqdm
 from transformers import MarkupLMProcessor, AutoModel
 from scripts.utils import preprocess_dom_text, chunk_tokens_xpaths, parse_html_and_extract_tokens_xpaths
-
+import pickle
 
 ##############################################################################
 #                  Embedding - Doc2Vec                                      #
 ##############################################################################
 
-def run_embedding_pipeline_doc2vec(pairs_data, dom_root_dir, doc2vec_model_path):
-    # Load the doc2vec model
+def run_embedding_pipeline_doc2vec(pairs_data, dom_root_dir, doc2vec_model_path, cache_path):
+    if os.path.exists(cache_path):
+        print("[Info] Loading cached Doc2Vec embeddings.")
+        with open(cache_path, "rb") as f:
+            state_embeddings, vector_size = pickle.load(f)
+        return state_embeddings, vector_size
+
+    print("[Info] No cached Doc2Vec embeddings found. Generating new cached Doc2Vec embeddings.")
+    Doc2Vec.FAST_VERSION = -1
     d2v_model = Doc2Vec.load(doc2vec_model_path)
+    d2v_model.workers = 1
+    d2v_model.random = np.random.RandomState(42)
     vector_size = d2v_model.vector_size
 
+    # Collect unique states based on the pairs_data
     unique_states = set()
     for d in pairs_data:
         unique_states.add((d["appname"], d["state1"]))
@@ -24,27 +34,23 @@ def run_embedding_pipeline_doc2vec(pairs_data, dom_root_dir, doc2vec_model_path)
 
     state_embeddings = {}
     for (appname, state_id) in unique_states:
-        if state_id not in state_embeddings:
-            # Load the DOM file
-            dom_path = os.path.join(dom_root_dir, appname, 'doms', f"{state_id}.html")
-            if not os.path.isfile(dom_path):
-                # If missing, skip or handle gracefully
-                state_embeddings[state_id] = np.zeros(vector_size, dtype=np.float32)
-                continue
+        dom_path = os.path.join(dom_root_dir, appname, 'doms', f"{state_id}.html")
+        if not os.path.isfile(dom_path):
+            state_embeddings[(appname, state_id)] = torch.zeros(vector_size, dtype=torch.float)
+            continue
 
-            with open(dom_path, "r", encoding="utf-8", errors="ignore") as f:
-                dom_content = f.read()
+        with open(dom_path, "r", encoding="utf-8", errors="ignore") as f:
+            dom_content = f.read()
+        cleaned_text = preprocess_dom_text(dom_content)
+        tokens = cleaned_text.split()
+        embedding = d2v_model.infer_vector(tokens)
+        state_embeddings[(appname, state_id)] = torch.tensor(embedding, dtype=torch.float)
 
-            # Preprocess text => remove angle brackets, etc.
-            cleaned_text = preprocess_dom_text(dom_content)
+    # Cache the computed embeddings
+    with open(cache_path, "wb") as f:
+        pickle.dump((state_embeddings, vector_size), f)
 
-            # Convert to list of tokens (Doc2Vec usually uses tokenized input)
-            tokens = cleaned_text.split()
-
-            # Inference with doc2vec
-            embedding = d2v_model.infer_vector(tokens)
-            state_embeddings[(appname, state_id)] = torch.tensor(embedding, dtype=torch.float)
-
+    print("[Info] Doc2Vec embeddings computed and cached.")
     return state_embeddings, vector_size
 
 ##############################################################################
@@ -157,8 +163,14 @@ def run_embedding_pipeline_bert(
         chunk_size,
         overlap,
         device,
-        chunk_threshold=5
+        chunk_threshold,
+        cache_path
 ):
+    if os.path.exists(cache_path):
+        print("[Info] Loading cached BERT embeddings.")
+        with open(cache_path, "rb") as f:
+            state_embeddings, final_input_dim = pickle.load(f)
+        return state_embeddings, final_input_dim
 
     state_chunks, global_max_chunks = gather_state_chunks_bert(
         pairs_data,
@@ -182,6 +194,11 @@ def run_embedding_pipeline_bert(
         device
     )
 
+    # Cache the computed embeddings
+    with open(cache_path, "wb") as f:
+        pickle.dump((state_embeddings, final_input_dim), f)
+
+    print("[Info] BERT embeddings computed and cached.")
     return state_embeddings, final_input_dim
 
 ##############################################################################
@@ -308,14 +325,15 @@ def run_embedding_pipeline_markuplm(
     overlap,
     device,
     markup_model_name,
-    chunk_threshold=5
+    chunk_threshold,
+    cache_path
 ):
-    """
-    1) Gathers DOM data for states in pairs_data
-    2) Loads MarkupLM
-    3) Embeds states to a fixed dimension
-    4) Returns (state_embeddings, final_input_dim)
-    """
+    if os.path.exists(cache_path):
+        print("[Info] Loading cached BERT embeddings.")
+        with open(cache_path, "rb") as f:
+            state_embeddings, final_input_dim = pickle.load(f)
+        return state_embeddings, final_input_dim
+
     state_chunks, global_max_chunks = gather_state_chunks_markuplm(
         pairs_data, dom_root_dir, chunk_size, overlap, chunk_threshold
     )
@@ -337,4 +355,9 @@ def run_embedding_pipeline_markuplm(
         markup_model,
         device
     )
+    # Cache the computed embeddings
+    with open(cache_path, "wb") as f:
+        pickle.dump((state_embeddings, final_input_dim), f)
+
+    print("[Info] MarkupLM embeddings computed and cached.")
     return state_embeddings, final_input_dim

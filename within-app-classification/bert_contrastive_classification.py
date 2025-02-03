@@ -40,13 +40,14 @@ if __name__ == "__main__":
     dom_root_dir = f"{base_path}/resources/doms"
     results_dir  = f"{base_path}/results"
     model_dir    = f"{base_path}/models"
-    title        = "withinapp_bert_base"
+    emb_dir      = f"{base_path}/embeddings"
+    title        = "withinapp_bert"
     setting_key  = "contrastive"
     model_name   = "bert-base-uncased"
 
     chunk_size   = 512
     batch_size   = 128
-    num_epochs   = 30
+    num_epochs   = 10
     lr           = 5e-5
     weight_decay = 0.01
     chunk_limit  = 5
@@ -79,7 +80,8 @@ if __name__ == "__main__":
             chunk_size=chunk_size,
             overlap=overlap,
             device=device,
-            chunk_threshold=chunk_limit
+            chunk_threshold=chunk_limit,
+            cache_path=os.path.join(emb_dir ,f"{title}_cache_{app}.pkl")
         )
 
         if not state_embeddings or (final_input_dim == 0):

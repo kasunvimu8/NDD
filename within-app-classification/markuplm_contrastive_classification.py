@@ -39,13 +39,14 @@ if __name__ == "__main__":
     dom_root_dir = f"{base_path}/resources/doms"
     results_dir  = f"{base_path}/results"
     model_dir    = f"{base_path}/models"
+    emb_dir      = f"{base_path}/embeddings"
     title        = "withinapp_markuplm"
     setting_key  = "contrastive"
     model_name   = "microsoft/markuplm-base"
 
     chunk_size    = 512
     batch_size    = 128
-    num_epochs    = 30
+    num_epochs    = 10
     lr            = 5e-5
     weight_decay  = 0.01
     chunk_limit   = 5
@@ -74,7 +75,8 @@ if __name__ == "__main__":
             overlap=overlap,
             device=device,
             markup_model_name=model_name,
-            chunk_threshold=chunk_limit
+            chunk_threshold=chunk_limit,
+            cache_path=os.path.join(emb_dir, f"{title}_cache_{app}.pkl")
         )
 
         if not state_embeddings or (final_input_dim == 0):

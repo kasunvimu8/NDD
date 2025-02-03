@@ -41,7 +41,8 @@ if __name__ == "__main__":
     dom_root_dir  = f"{base_path}/resources/doms"
     results_dir   = f"{base_path}/results"
     model_dir     = f"{base_path}/models"
-    title         = "acrossapp_bert_base"
+    emb_dir       = f"{base_path}/embeddings"
+    title         = "acrossapp_bert"
     setting_key   = "triplet"
     model_name    = "bert-base-uncased"
 
@@ -83,7 +84,8 @@ if __name__ == "__main__":
             chunk_size=chunk_size,
             overlap=overlap,
             device=device,
-            chunk_threshold=chunk_limit
+            chunk_threshold=chunk_limit,
+            cache_path=os.path.join(emb_dir, f"{title}_cache_testapp_{test_app}.pkl")
         )
         if not state_embeddings or (final_input_dim == 0):
             print("[Warning] No embeddings found. Skipping.")
