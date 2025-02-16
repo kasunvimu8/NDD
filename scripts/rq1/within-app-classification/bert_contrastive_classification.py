@@ -7,11 +7,11 @@ from transformers import AutoTokenizer, AutoModel
 sys.path.append("/Users/kasun/Documents/uni/semester-4/thesis/NDD")
 
 from scripts.rq1.datasets import prepare_datasets_and_loaders_within_app_contrastive
-from scripts.rq1.embedding import run_embedding_pipeline_bert
+from scripts.utils.embedding import run_embedding_pipeline_bert
 from scripts.rq1.test import test_model_contrastive
 from scripts.rq1.train import train_one_epoch_contrastive
 from scripts.rq1.validate import validate_model_contrastive
-from scripts.rq1.networks import ContrastiveSiameseNN
+from scripts.utils.networks import ContrastiveSiameseNN
 from scripts.utils.utils import (
     set_all_seeds,
     initialize_weights,

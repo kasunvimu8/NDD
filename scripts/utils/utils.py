@@ -327,7 +327,6 @@ def load_single_app_pairs_from_db(db_path, table_name, appname):
     pairs = []
     try:
         rows = cursor.execute(query, (appname,)).fetchall()
-        print(len(rows))
         for appname_val, s1, s2, hc, retained_val in rows:
             # Skip rows that are not retained
             if retained_val != 1:
