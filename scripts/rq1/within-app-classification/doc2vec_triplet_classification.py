@@ -5,23 +5,22 @@ import os
 import time
 sys.path.append("/Users/kasun/Documents/uni/semester-4/thesis/NDD")
 
-from transformers import AutoTokenizer, AutoModel
-from scripts.datasets import prepare_datasets_and_loaders_within_app_triplet
-from scripts.embedding import run_embedding_pipeline_bert
-from scripts.test import test_model_triplet
-from scripts.train import train_one_epoch_triplet
-from scripts.validate import validate_model_triplet
-from scripts.networks import TripletSiameseNN
-from scripts.utils import (
+from scripts.rq1.datasets import prepare_datasets_and_loaders_within_app_triplet
+from scripts.rq1.embedding import run_embedding_pipeline_doc2vec
+from scripts.rq1.test import test_model_triplet
+from scripts.rq1.train import train_one_epoch_triplet
+from scripts.rq1.validate import validate_model_triplet
+from scripts.rq1.networks import TripletSiameseNN
+from scripts.utils.utils import (
     set_all_seeds,
     initialize_weights,
     save_results_to_excel,
     load_single_app_pairs_from_db,
-    initialize_device,
+    initialize_device
 )
 
 ##############################################################################
-#     Main Script: BERT Triplet Within-App Classification                     #
+#     Main Script: Doc2Vec Triplet Within-App Classification                     #
 ##############################################################################
 
 if __name__ == "__main__":
@@ -34,25 +33,25 @@ if __name__ == "__main__":
         'mantisbt', 'dimeshift', 'pagekit', 'phoenix','petclinic'
     ]
 
-    base_path    = "/Users/kasun/Documents/uni/semester-4/thesis/NDD"
-    table_name   = "nearduplicates"
-    db_path      = f"{base_path}/dataset/SS_refined.db"
-    dom_root_dir = f"{base_path}/resources/doms"
-    results_dir  = f"{base_path}/results"
-    model_dir    = f"{base_path}/models"
-    emb_dir      = f"{base_path}/embeddings"
-    title        = "withinapp_bert"
-    setting_key  = "triplet"
-    model_name   = "bert-base-uncased"
+    base_path       = "/Users/kasun/Documents/uni/semester-4/thesis/NDD"
+    table_name      = "nearduplicates"
+    db_path         = f"{base_path}/dataset/SS_refined.db"
+    dom_root_dir    = f"{base_path}/resources/doms"
+    results_dir     = f"{base_path}/results"
+    model_dir       = f"{base_path}/models"
+    emb_dir         = f"{base_path}/embeddings"
+    title           = "withinapp_doc2vec"
+    setting_key     = "triplet"
 
-    chunk_size   = 512
-    batch_size   = 128
-    num_epochs   = 10
-    lr           = 5e-4
-    weight_decay = 0.01
-    chunk_limit  = 5
-    overlap      = 0
-    margin       = 1
+    doc2vec_path    = "/Users/kasun/Documents/uni/semester-4/thesis/NDD/resources/embedding-models/content_tags_model_train_setsize300epoch50.doc2vec.model"
+
+    batch_size    = 128
+    num_epochs    = 10
+    lr            = 1e-3
+    weight_decay  = 0.01
+    chunk_limit   = 5
+    overlap       = 0
+    margin        = 1
 
     results = []
 
@@ -64,27 +63,18 @@ if __name__ == "__main__":
         model_filename = f"{title}_{setting_key}_{app}_cl_{chunk_limit}_bs_{batch_size}_ep_{num_epochs}_lr_{lr}_wd_{weight_decay}.pt"
         model_file = os.path.join(model_dir, model_filename)
 
-        tokenizer = AutoTokenizer.from_pretrained(model_name)
-        bert_model = AutoModel.from_pretrained(model_name)
-
         app_pairs = load_single_app_pairs_from_db(db_path, table_name, app)
         if not app_pairs:
             print(f"[Warning] No data found for app={app}. Skipping.")
             break
         print(f"[Info] Total pairs in DB (retained=1) for {app}: {len(app_pairs)}")
 
-        state_embeddings, final_input_dim = run_embedding_pipeline_bert(
-            tokenizer=tokenizer,
-            bert_model=bert_model,
+        state_embeddings, final_input_dim = run_embedding_pipeline_doc2vec(
             pairs_data=app_pairs,
             dom_root_dir=dom_root_dir,
-            chunk_size=chunk_size,
-            overlap=overlap,
-            device=device,
-            chunk_threshold=chunk_limit,
+            doc2vec_model_path=doc2vec_path,
             cache_path=os.path.join(emb_dir, f"{title}_cache_{app}.pkl")
         )
-
         if not state_embeddings or (final_input_dim == 0):
             print("[Warning] No embeddings found. Skipping.")
             continue

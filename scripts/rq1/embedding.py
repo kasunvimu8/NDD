@@ -5,7 +5,7 @@ import torch
 from gensim.models import Doc2Vec
 from tqdm import tqdm
 from transformers import MarkupLMProcessor, AutoModel
-from scripts.utils import preprocess_dom_text, chunk_tokens_xpaths, parse_html_and_extract_tokens_xpaths
+from scripts.utils.utils import preprocess_dom_text, chunk_tokens_xpaths, parse_html_and_extract_tokens_xpaths
 import pickle
 
 ##############################################################################

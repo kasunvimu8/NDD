@@ -1,17 +1,18 @@
+import os
 import torch
 import torch.optim as optim
 import sys
 import time
-import os
+from transformers import AutoTokenizer, AutoModel
 sys.path.append("/Users/kasun/Documents/uni/semester-4/thesis/NDD")
 
-from scripts.datasets import prepare_datasets_and_loaders_within_app_contrastive
-from scripts.embedding import run_embedding_pipeline_doc2vec
-from scripts.test import test_model_contrastive
-from scripts.train import train_one_epoch_contrastive
-from scripts.validate import validate_model_contrastive
-from scripts.networks import ContrastiveSiameseNN
-from scripts.utils import (
+from scripts.rq1.datasets import prepare_datasets_and_loaders_within_app_contrastive
+from scripts.rq1.embedding import run_embedding_pipeline_bert
+from scripts.rq1.test import test_model_contrastive
+from scripts.rq1.train import train_one_epoch_contrastive
+from scripts.rq1.validate import validate_model_contrastive
+from scripts.rq1.networks import ContrastiveSiameseNN
+from scripts.utils.utils import (
     set_all_seeds,
     initialize_weights,
     save_results_to_excel,
@@ -20,7 +21,7 @@ from scripts.utils import (
 )
 
 ##############################################################################
-#     Main Script: Doc2Vec Contrastive Within-App Classification                     #
+#     Main Script: BERT Contrastive Within-App Classification                     #
 ##############################################################################
 
 if __name__ == "__main__":
@@ -40,17 +41,17 @@ if __name__ == "__main__":
     results_dir  = f"{base_path}/results"
     model_dir    = f"{base_path}/models"
     emb_dir      = f"{base_path}/embeddings"
-    title        = "withinapp_doc2vec"
+    title        = "withinapp_bert"
     setting_key  = "contrastive"
+    model_name   = "bert-base-uncased"
 
-    doc2vec_path = "/Users/kasun/Documents/uni/semester-4/thesis/NDD/resources/embedding-models/content_tags_model_train_setsize300epoch50.doc2vec.model"
-
-    batch_size    = 128
-    num_epochs    = 10
-    lr            = 5e-5
-    weight_decay  = 0.01
-    chunk_limit   = 5
-    overlap       = 0
+    chunk_size   = 512
+    batch_size   = 128
+    num_epochs   = 10
+    lr           = 5e-5
+    weight_decay = 0.01
+    chunk_limit  = 5
+    overlap      = 0
 
     results = []
 
@@ -62,6 +63,8 @@ if __name__ == "__main__":
         model_filename = f"{title}_{setting_key}_{app}_cl_{chunk_limit}_bs_{batch_size}_ep_{num_epochs}_lr_{lr}_wd_{weight_decay}.pt"
         model_file = os.path.join(model_dir, model_filename)
 
+        tokenizer = AutoTokenizer.from_pretrained(model_name)
+        bert_model = AutoModel.from_pretrained(model_name)
 
         app_pairs = load_single_app_pairs_from_db(db_path, table_name, app)
         if not app_pairs:
@@ -69,12 +72,18 @@ if __name__ == "__main__":
             break
         print(f"[Info] Total pairs in DB (retained=1) for {app}: {len(app_pairs)}")
 
-        state_embeddings, final_input_dim = run_embedding_pipeline_doc2vec(
+        state_embeddings, final_input_dim = run_embedding_pipeline_bert(
+            tokenizer=tokenizer,
+            bert_model=bert_model,
             pairs_data=app_pairs,
             dom_root_dir=dom_root_dir,
-            doc2vec_model_path=doc2vec_path,
+            chunk_size=chunk_size,
+            overlap=overlap,
+            device=device,
+            chunk_threshold=chunk_limit,
             cache_path=os.path.join(emb_dir ,f"{title}_cache_{app}.pkl")
         )
+
         if not state_embeddings or (final_input_dim == 0):
             print("[Warning] No embeddings found. Skipping.")
             continue

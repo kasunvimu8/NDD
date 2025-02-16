@@ -1,5 +1,5 @@
 from tqdm import tqdm
-from scripts.networks import TripletLoss
+from scripts.rq1.networks import TripletLoss
 
 
 ##############################################################################
