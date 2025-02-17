@@ -46,7 +46,7 @@ if __name__ == "__main__":
 
     chunk_size    = 512
     batch_size    = 128
-    num_epochs    = 10
+    num_epochs    = 50
     lr            = 5e-5
     weight_decay  = 0.01
     chunk_limit   = 5
@@ -59,7 +59,7 @@ if __name__ == "__main__":
         print(f"[Info] Starting within-app classification for: {app}")
         print("=============================================")
 
-        model_filename = f"{title}_{setting_key}_{app}_model_cl_{chunk_limit}_bs_{batch_size}_ep_{num_epochs}_lr_{lr}_wd_{weight_decay}.pt"
+        model_filename = f"{title}_{setting_key}_{app}_cl_{chunk_limit}_bs_{batch_size}_ep_{num_epochs}_lr_{lr}_wd_{weight_decay}.pt"
         model_file = os.path.join(model_dir, model_filename)
 
         app_pairs = load_single_app_pairs_from_db(db_path, table_name, app)

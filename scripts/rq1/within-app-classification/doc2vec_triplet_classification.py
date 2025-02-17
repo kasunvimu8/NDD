@@ -46,7 +46,7 @@ if __name__ == "__main__":
     doc2vec_path    = "/Users/kasun/Documents/uni/semester-4/thesis/NDD/resources/embedding-models/content_tags_model_train_setsize300epoch50.doc2vec.model"
 
     batch_size    = 128
-    num_epochs    = 10
+    num_epochs    = 50
     lr            = 1e-3
     weight_decay  = 0.01
     chunk_limit   = 5

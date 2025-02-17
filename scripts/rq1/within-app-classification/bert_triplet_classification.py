@@ -41,13 +41,13 @@ if __name__ == "__main__":
     results_dir  = f"{base_path}/results"
     model_dir    = f"{base_path}/models"
     emb_dir      = f"{base_path}/embeddings"
-    title        = "withinapp_bert"
+    title        = "withinapp_refineweb"
     setting_key  = "triplet"
-    model_name   = "bert-base-uncased"
+    model_name   = "Rocketknight1/falcon-rw-1b"
 
     chunk_size   = 512
     batch_size   = 128
-    num_epochs   = 10
+    num_epochs   = 50
     lr           = 5e-4
     weight_decay = 0.01
     chunk_limit  = 5

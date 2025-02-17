@@ -47,7 +47,7 @@ if __name__ == "__main__":
 
     chunk_size   = 512
     batch_size   = 128
-    num_epochs   = 10
+    num_epochs   = 50
     lr           = 5e-5
     weight_decay = 0.01
     chunk_limit  = 5
