@@ -254,8 +254,20 @@ configurations = [
     #     'chunk_limit': 1,
     #     'doc2vec_path': None,
     #     'lr' : 2e-05,
-    #     'epochs': 10,
-    # }
+    #     'epochs': 12,
+    # },
+    {
+        'model_name': "microsoft/markuplm-base",
+        'title': "acrossapp_markuplm",
+        'embedding_type': "markuplm",
+        'setting': "triplet",
+        'chunk_size': 512,
+        'overlap': 0,
+        'chunk_limit': 1,
+        'doc2vec_path': None,
+        'lr' : 2e-05,
+        'epochs': 12,
+    }
 ]
 
 OUTPUT_CSV = True
@@ -277,7 +289,7 @@ if __name__ == '__main__':
         )
 
         print(f'\n======== Setting {setting}  Embedding : {embedding_type} ========')
-        filename = f'{base_path}/results/rq2/{title}_{setting}_model_quality.csv'
+        filename = f'{base_path}/results/rq2/{title}_{setting}_test_model_quality.csv'
 
         if OUTPUT_CSV and not os.path.exists(filename):
             header = ['Setting', 'App', 'Method', 'F1', 'Precision', 'Recall']
