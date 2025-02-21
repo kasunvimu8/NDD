@@ -2,15 +2,14 @@ import csv
 import json
 import os
 import sys
-import pandas as pd
 import torch.nn.functional as F
 import torch
 from transformers import AutoTokenizer, AutoModel
 sys.path.append("/Users/kasun/Documents/uni/semester-4/thesis/NDD")
 
 from scripts.utils.embedding import run_embedding_pipeline_bert, run_embedding_pipeline_doc2vec, run_embedding_pipeline_markuplm
-from scripts.utils.networks import ContrastiveSiameseNN, TripletSiameseNN
-from scripts.utils.utils import load_single_app_pairs_from_db, initialize_device
+from scripts.utils.utils import load_single_app_pairs_from_db, initialize_device, get_model
+
 
 def is_duplicate_contrastive(model, state_embeddings, app, state1, state2, device, threshold=0.5):
     model.eval()
@@ -46,19 +45,6 @@ def is_duplicate_triplet(model, state_embeddings, app, state1, state2, device, t
         preds = (distances <= threshold).long().cpu().numpy()
 
         return bool(preds.item() == 1.0)
-
-def get_model(model_path, setting, device, dimension):
-    if setting == "contrastive":
-        model = ContrastiveSiameseNN(input_dim=dimension)
-    else:
-        model = TripletSiameseNN(input_dim=dimension)
-
-    model_state = torch.load(model_path, map_location=device, weights_only=True)
-    model.load_state_dict(model_state, strict=True)
-    model.to(device)
-    model.eval()
-
-    return model
 
 def get_embedding(embedding_type, model_name, app_pairs, dom_root_dir, chunk_size, overlap, chunk_limit, emb_dir, app, device, title, doc2vec_path=None):
     if embedding_type == 'bert' or embedding_type == 'refinedweb':

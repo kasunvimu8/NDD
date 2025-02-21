@@ -12,6 +12,9 @@ import pandas as pd
 from datetime import datetime
 import sqlite3
 from torch.backends import mps
+import json
+
+from scripts.utils.networks import ContrastiveSiameseNN, TripletSiameseNN
 
 
 ####################################################
@@ -348,3 +351,60 @@ def load_single_app_pairs_from_db(db_path, table_name, appname):
         conn.close()
 
     return pairs
+
+# Load the model from model_path and return
+def get_model(model_path, setting, device, dimension):
+    if setting == "contrastive":
+        model = ContrastiveSiameseNN(input_dim=dimension)
+    else:
+        model = TripletSiameseNN(input_dim=dimension)
+
+    model_state = torch.load(model_path, map_location=device, weights_only=True)
+    model.load_state_dict(model_state, strict=True)
+    model.to(device)
+    model.eval()
+
+    return model
+
+# For crawling
+# Sanitize JSON strings by removing non-printable ASCII characters, TODO: check if this destroys the further processing somehow
+def sanitize_json_string_crawling(json_str):
+    # Define a regex pattern for valid printable ASCII characters (excluding control characters)
+    printable_ascii_pattern = re.compile(r'[\x20-\x7E]')
+
+    # Remove all characters that do not match the printable ASCII pattern
+    sanitized_str = ''.join(char if printable_ascii_pattern.match(char) else '' for char in json_str)
+
+    return sanitized_str
+
+# Fix JSON strings incoming from the crawler
+def fix_json_crawling(json_string):
+    fixed_json = []
+    in_string = False
+
+    for ix, char in enumerate(json_string):
+        if char == '"' and in_string:
+            if json_string[ix+1] == ',' or json_string[ix+1] == '}' or json_string[ix+1:].replace(" ", "").startswith('}') or json_string[ix+1:].replace(" ", "").startswith('\n'):
+                in_string = False
+            else:
+                fixed_json.append("'")
+                continue
+        elif not in_string and char == '"':
+            if len(fixed_json) > 2 and (fixed_json[-1] == ':' or fixed_json[-2] == ':'):
+                in_string = True
+        if char == '\\':
+            fixed_json.append('\\')
+        fixed_json.append(char)
+        if not in_string and char == '}':
+            break
+
+    fixed_json_string = ''.join(fixed_json)
+    fixed_json_string = fixed_json_string.replace('\n', '')
+    fixed_json_string = sanitize_json_string_crawling(fixed_json_string)
+
+    try:
+        json.loads(fixed_json_string)
+        return fixed_json_string
+    except json.JSONDecodeError as e:
+        print(f"Error decoding JSON: {e},\n fixed JSON: {fixed_json_string}")
+        return "Error decoding JSON"
