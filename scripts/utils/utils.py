@@ -152,7 +152,6 @@ def parse_html_and_extract_tokens_xpaths(dom_path):
     """
     Reads an HTML file, removes <style> and <script>, then does DFS to collect (token, xpath) pairs.
     """
-    from bs4 import BeautifulSoup
     try:
         with open(dom_path, 'r', encoding='utf-8') as f:
             html = f.read()
