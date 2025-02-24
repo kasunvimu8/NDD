@@ -18,6 +18,7 @@ from scripts.utils.utils import (
     load_single_app_pairs_from_db,
     initialize_device
 )
+os.environ["TOKENIZERS_PARALLELISM"] = "false"
 
 ##############################################################################
 #     Main Script: MarkupLM Contrastive Within-App Classification                     #
@@ -43,6 +44,7 @@ if __name__ == "__main__":
     title        = "withinapp_markuplm"
     setting_key  = "contrastive"
     model_name   = "microsoft/markuplm-base"
+    save_results = False
 
     chunk_size    = 512
     batch_size    = 128
@@ -133,15 +135,16 @@ if __name__ == "__main__":
         }
         results.append(row)
 
-    save_results_to_excel(
-        title=title,
-        results=results,
-        results_dir=results_dir,
-        setting_key=setting_key,
-        overlap=overlap,
-        batch_size=batch_size,
-        num_epochs=num_epochs,
-        lr=lr,
-        weight_decay=weight_decay,
-        chunk_limit=chunk_limit
-    )
+    if save_results:
+        save_results_to_excel(
+            title=title,
+            results=results,
+            results_dir=results_dir,
+            setting_key=setting_key,
+            overlap=overlap,
+            batch_size=batch_size,
+            num_epochs=num_epochs,
+            lr=lr,
+            weight_decay=weight_decay,
+            chunk_limit=chunk_limit
+        )

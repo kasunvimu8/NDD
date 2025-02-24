@@ -42,6 +42,7 @@ if __name__ == "__main__":
     emb_dir         = f"{base_path}/embeddings"
     title           = "withinapp_doc2vec"
     setting_key     = "triplet"
+    save_results = False
 
     doc2vec_path    = "/Users/kasun/Documents/uni/semester-4/thesis/NDD/resources/embedding-models/content_tags_model_train_setsize300epoch50.doc2vec.model"
 
@@ -129,15 +130,16 @@ if __name__ == "__main__":
         }
         results.append(row)
 
-    save_results_to_excel(
-        title=title,
-        results=results,
-        results_dir=results_dir,
-        setting_key=setting_key,
-        overlap=overlap,
-        batch_size=batch_size,
-        num_epochs=num_epochs,
-        lr=lr,
-        weight_decay=weight_decay,
-        chunk_limit=chunk_limit
-    )
+    if save_results:
+        save_results_to_excel(
+            title=title,
+            results=results,
+            results_dir=results_dir,
+            setting_key=setting_key,
+            overlap=overlap,
+            batch_size=batch_size,
+            num_epochs=num_epochs,
+            lr=lr,
+            weight_decay=weight_decay,
+            chunk_limit=chunk_limit
+        )
