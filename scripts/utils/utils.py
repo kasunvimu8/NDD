@@ -302,6 +302,15 @@ def save_results_to_excel(title, results, results_dir, setting_key, overlap, bat
             summary_row["TrainingTime"] = numeric_times.mean()
         else:
             summary_row["TrainingTime"] = "N/A"
+
+    if "PreprocessingTime" in df.columns:
+        # Convert training times to numeric (ignoring non-numeric values like "N/A")
+        numeric_times = pd.to_numeric(df["PreprocessingTime"], errors="coerce")
+        if numeric_times.count() > 0:
+            summary_row["PreprocessingTime"] = numeric_times.mean()
+        else:
+            summary_row["PreprocessingTime"] = "N/A"
+
     summary_df = pd.DataFrame([summary_row])
 
     # Concatenate the summary row to the original DataFrame

@@ -41,10 +41,10 @@ if __name__ == "__main__":
     results_dir  = f"{base_path}/results"
     model_dir    = f"{base_path}/models"
     emb_dir      = f"{base_path}/embeddings"
-    title        = "withinapp_refineweb"
+    title        = "withinapp_bert"
     setting_key  = "triplet"
-    model_name   = "Rocketknight1/falcon-rw-1b"
-    save_results = False
+    model_name   = "bert-base-uncased"
+    save_results = True
 
     chunk_size   = 512
     batch_size   = 128
@@ -61,6 +61,7 @@ if __name__ == "__main__":
         print("\n=============================================")
         print(f"[Info] Starting within-app classification for: {app}")
         print("=============================================")
+        preprocess_start_time = time.time()
 
         model_filename = f"{title}_{setting_key}_{app}_cl_{chunk_limit}_bs_{batch_size}_ep_{num_epochs}_lr_{lr}_wd_{weight_decay}.pt"
         model_file = os.path.join(model_dir, model_filename)
@@ -107,6 +108,7 @@ if __name__ == "__main__":
         model.to(device)
 
         optimizer = optim.Adam(model.parameters(), lr=lr, weight_decay=weight_decay)
+        preprocess_time = time.time() - preprocess_start_time
 
         if os.path.exists(model_file):
             print(f"[Info] Found saved model for {app} at {model_file}. Loading model and skipping training.")
@@ -136,7 +138,8 @@ if __name__ == "__main__":
             "F1_Class 0": metrics_dict["F1_Class 0"],
             "F1_Class 1": metrics_dict["F1_Class 1"],
             "F1 Score (Weighted Avg)": metrics_dict["F1 Score (Weighted Avg)"],
-            "TrainingTime": training_time
+            "TrainingTime": training_time,
+            "PreprocessingTime": preprocess_time,
         }
         results.append(row)
 
