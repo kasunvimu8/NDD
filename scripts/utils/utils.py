@@ -13,8 +13,10 @@ from datetime import datetime
 import sqlite3
 from torch.backends import mps
 import json
-
+from gensim.models import Doc2Vec
+from transformers import AutoTokenizer, AutoModel, MarkupLMProcessor
 from scripts.utils.networks import ContrastiveSiameseNN, TripletSiameseNN
+import torch.nn.functional as F
 
 
 ####################################################
@@ -374,7 +376,7 @@ def get_model(model_path, setting, device, dimension):
 
     return model
 
-# For crawling
+# For crawling rq3
 # Sanitize JSON strings by removing non-printable ASCII characters, TODO: check if this destroys the further processing somehow
 def sanitize_json_string_crawling(json_str):
     # Define a regex pattern for valid printable ASCII characters (excluding control characters)
@@ -416,3 +418,228 @@ def fix_json_crawling(json_string):
     except json.JSONDecodeError as e:
         print(f"Error decoding JSON: {e},\n fixed JSON: {fixed_json_string}")
         return "Error decoding JSON"
+
+def chunk_text_crawling(text, chunk_size, overlap):
+    tokens = text.split()
+    step = max(1, chunk_size - overlap)
+    chunks = []
+    i = 0
+    while i < len(tokens):
+        chunks.append(" ".join(tokens[i : i + chunk_size]))
+        i += step
+    return chunks
+
+def parse_dom_into_nodes_xpaths(dom_str):
+    soup = BeautifulSoup(dom_str, "html.parser")
+    soup = soup.html
+    if not soup:
+        return []
+
+    for tag in soup(['style', 'script']):
+        tag.decompose()
+
+    collected = []
+    dfs_collect_tokens_xpaths(soup, "/html[1]", collected)
+
+    return collected
+
+def embed_dom_bert_crawling(dom_str, tokenizer, embedding_model, device, chunk_size, dimension, overlap):
+    clean_str = preprocess_dom_text(dom_str)
+    chunk_list = chunk_text_crawling(clean_str, chunk_size, overlap)
+
+    if not chunk_list:
+        return torch.zeros(dimension, device=device)
+
+    embedding_model.eval()
+    chunk_embs = []
+
+    with torch.no_grad():
+        for chunk_text in chunk_list:
+            inputs = tokenizer(chunk_text, return_tensors="pt", max_length=512, truncation=True)
+            for k in inputs:
+                inputs[k] = inputs[k].to(device)
+
+            outputs = embedding_model(**inputs)
+            cls_emb = outputs.last_hidden_state[:, 0, :]  # shape: [1, 768]
+            chunk_embs.append(cls_emb)
+
+    # Stack into shape [num_chunks, 1, 768], then take the mean along dim=0 => [1, 768]
+    chunk_embs = torch.stack(chunk_embs, dim=0)  # [num_chunks, 1, 768]
+    mean_emb = torch.mean(chunk_embs, dim=0)     # [1, 768]
+
+    return mean_emb.to(device)
+
+def embed_dom_doc2vec_crawling(dom_str, doc2vec_model, device):
+    clean_str = preprocess_dom_text(dom_str)
+    tokens = clean_str.split()
+
+    # shape [300]
+    doc_vec = doc2vec_model.infer_vector(tokens)
+
+    # Convert to torch and reshape to [1, 300]
+    emb = torch.tensor(doc_vec, dtype=torch.float, device=device).unsqueeze(0)
+    return emb
+
+def embed_dom_markuplm_crawling(dom_str, markup_model, processor, device, chunk_size, dimension, overlap):
+    markup_model.eval()
+    hidden_dim = markup_model.config.hidden_size
+
+    # global_max_chunks = dimension // hidden_dim
+    global_max_chunks = dimension // hidden_dim if hidden_dim else 1
+    if global_max_chunks < 1:
+        global_max_chunks = 1
+
+    token_xpath_list = parse_dom_into_nodes_xpaths(dom_str)
+    if not token_xpath_list:
+        print(f"[Warning] No tokens and xpaths found in {dom_str}. Skipping.")
+        return torch.zeros(1, dimension, device=device)
+
+    chunks = chunk_tokens_xpaths(token_xpath_list, chunk_size=chunk_size, overlap=overlap)
+
+    chunk_embs = []
+    with torch.no_grad():
+        for c in chunks:
+            tokens_chunk = [pair[0] for pair in c]
+            xpaths_chunk = [pair[1] for pair in c]
+
+            encoding = processor(
+                nodes=tokens_chunk,
+                xpaths=xpaths_chunk,
+                padding='max_length',
+                truncation=True,
+                max_length=512,
+                return_tensors='pt'
+            )
+            input_ids = encoding["input_ids"].to(device)
+            attention_mask = encoding["attention_mask"].to(device)
+            token_type_ids = encoding.get("token_type_ids")
+            if token_type_ids is not None:
+                token_type_ids = token_type_ids.to(device)
+
+            outputs = markup_model(
+                input_ids=input_ids,
+                attention_mask=attention_mask,
+                token_type_ids=token_type_ids
+            )
+            # We take the CLS embedding => shape [batch_size=1, hidden_dim]
+            cls_emb = outputs.last_hidden_state[:, 0, :]
+            chunk_embs.append(cls_emb.squeeze(0))
+
+    num_chunks = len(chunk_embs)
+
+    if num_chunks > global_max_chunks:
+        chunk_embs = chunk_embs[:global_max_chunks]
+        num_chunks = global_max_chunks
+
+    if num_chunks < global_max_chunks:
+        for _ in range(global_max_chunks - num_chunks):
+            chunk_embs.append(torch.zeros(hidden_dim, device=device))
+
+    # Concatenate => shape [global_max_chunks*hidden_dim], then unsqueeze(0) => [1, global_max_chunks*hidden_dim]
+    final_emb = torch.cat(chunk_embs, dim=0)  # [global_max_chunks * hidden_dim]
+    final_emb = final_emb.unsqueeze(0)        # => [1, dimension]
+
+    return final_emb  # shape [1, dimension]
+
+def get_embedding(dom_str, model_name, embedding_type, chunk_size, dimension, overlap, device, doc2vec_path):
+    if embedding_type in ('bert', 'refinedweb'):
+        tokenizer = AutoTokenizer.from_pretrained(model_name)
+
+        bert_model = AutoModel.from_pretrained(model_name)
+        bert_model.to(device)
+
+        state_embedding = embed_dom_bert_crawling(
+            dom_str=dom_str,
+            tokenizer=tokenizer,
+            embedding_model=bert_model,
+            device=device,
+            chunk_size=chunk_size,
+            dimension=dimension,
+            overlap=overlap,
+        )
+        return state_embedding
+    elif embedding_type == 'markuplm':
+        processor = MarkupLMProcessor.from_pretrained(model_name)
+        processor.parse_html = False
+        markup_model = AutoModel.from_pretrained(model_name)
+        markup_model.to(device)
+
+        state_embedding = embed_dom_markuplm_crawling(
+            dom_str=dom_str,
+            markup_model=markup_model,
+            processor=processor,
+            device=device,
+            chunk_size=chunk_size,
+            dimension=dimension,
+            overlap=overlap
+        )
+        print(f"shape {state_embedding.shape}")
+        return state_embedding
+    elif embedding_type == 'doc2vec':
+        doc2vec_model = Doc2Vec.load(doc2vec_path)
+        doc2vec_model.random.seed(42)  # fix seed if needed
+
+        # produce [1, 300]
+        state_embedding = embed_dom_doc2vec_crawling(dom_str, doc2vec_model, device)
+        return state_embedding
+    else:
+        raise ValueError(f"Unknown embedding_type: {embedding_type}")
+
+def saf_equals(
+        dom1,
+        dom2,
+        classification_model,
+        model_name,
+        embedding_type,
+        setting,
+        device,
+        doc2vec_path,
+        chunk_size=512,
+        dimension=768,
+        overlap=0,
+        threshold=0.5
+):
+    """
+    Returns 1 if dom1 and dom2 are considered duplicates, else 0.
+
+    setting="contrastive":  uses classification_model(emb1, emb2) -> outputs['logits']
+                 probability => compare with threshold
+    setting="triplet": uses classification_model.forward_once(...) and
+                    distance => compare with threshold
+    """
+    emb1 = get_embedding(dom1, model_name, embedding_type, chunk_size, dimension, overlap, device, doc2vec_path)
+    emb2 = get_embedding(dom2, model_name, embedding_type, chunk_size, dimension, overlap, device, doc2vec_path)
+
+    if setting == "contrastive":
+        # Contrastive(BCE) approach
+        outputs = classification_model(emb1, emb2)
+        logits = outputs["logits"].squeeze(1)  # shape [1]
+        probs = torch.sigmoid(logits)
+        print(f"[Info] BCE probability : {probs.item()}")
+        preds = (probs > threshold).float()
+        return int(preds.item())
+
+    elif setting == "triplet":
+        # Triplet-based approach => compute distance
+        out1 = classification_model.forward_once(emb1)
+        out2 = classification_model.forward_once(emb2)
+
+        distance = F.pairwise_distance(out1, out2)  # shape [1]
+        print(f"[Info] Triplet distance : {distance.item()}")
+        # If distance <= threshold => duplicates
+        pred = 1 if distance.item() <= threshold else 0
+        return pred
+
+    else:
+        raise ValueError(f"Unknown mode: {setting}")
+
+
+# Report for rq4
+def print_report(app_time, baseline, representation):
+    """
+    Print the results of the inference time experiment.
+    """
+    print(f"Results for {baseline} using {representation} representation:")
+    for app, time in app_time.items():
+        print(f"{app}: {time:.2f} seconds")
+    print(f"Avg. time: {sum(app_time.values()) / len(app_time):.2f} seconds")
