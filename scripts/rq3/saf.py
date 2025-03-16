@@ -10,8 +10,7 @@ import torch.nn.functional as F
 os.environ["TOKENIZERS_PARALLELISM"] = "false"
 
 sys.path.append("/Users/kasun/Documents/uni/semester-4/thesis/NDD")
-from scripts.utils.utils import fix_json_crawling, get_model, initialize_device, preprocess_dom_text, \
-    dfs_collect_tokens_xpaths, chunk_tokens_xpaths
+from scripts.utils.utils import fix_json_crawling, get_model, initialize_device, preprocess_dom_text, dfs_collect_tokens_xpaths, chunk_tokens_xpaths
 
 base_path        = "/Users/kasun/Documents/uni/semester-4/thesis/NDD"
 doc2vec_path     = f"/{base_path}/resources/embedding-models/content_tags_model_train_setsize300epoch50.doc2vec.model"
@@ -213,13 +212,13 @@ configurations = [
     }
 ]
 
-title            = "acrossapp_markuplm"
-appname          = "addressbook" # within app -> target app , across app -> test app
+title            = "withinapp_doc2vec"
+appname          = "pagekit" # appname is treated as within app -> target app and across app -> test app
+setting          = "triplet" # contrastive or triplet
+dimensions       = 300
 
 current_configs   = [config for config in configurations if config['title'] == title]
-current_config    = current_configs[1] if current_configs else None
-
-print(current_config)
+current_config    = current_configs[0] if (current_configs[0]['setting'] == 'contrastive' and setting == 'contrastive') else current_configs[1]
 
 model_name       = current_config['model_name']
 setting          = current_config['setting']
@@ -236,23 +235,6 @@ def increase_no_of_inferences():
     if no_of_inferences % 10 == 0:
         print(f"Number of inferences: {no_of_inferences}")
 
-def get_dimensions(model_path):
-    device = initialize_device()
-    state_dict = torch.load(model_path, map_location=device, weights_only=True)
-
-    input_dim = None
-    for key in state_dict.keys():
-        if key.startswith("feature_extractor.0.weight"):
-            input_dim = state_dict[key].shape[1]
-            print(f"[Info] Dimension : {input_dim}")
-            break
-
-    if input_dim is None:
-        print(f"[Warning] Could not deduce the input dimension")
-        sys.exit(1)
-
-    return input_dim
-
 def load_model_and_tokenizer():
     model_path = f"{base_path}/models/{title}_{setting}_{appname}_cl_{chunk_limit}_bs_128_ep_{trained_epochs}_lr_{lr}_wd_0.01.pt"
 
@@ -260,8 +242,6 @@ def load_model_and_tokenizer():
         print(f"[Warning] Model file not found at {model_path}. Skipping.")
         sys.exit(1)
 
-    dimensions = get_dimensions(model_path)
-    device = initialize_device()
 
     classification_model = get_model(model_path, setting, device, dimensions)
     classification_model.to(device)
@@ -395,8 +375,6 @@ def embed_dom_markuplm_crawling(dom_str, markup_model, processor, device, chunk_
     return final_emb  # shape [1, dimension]
 
 def get_embedding(dom_str, model_name, embedding_type, chunk_size, dimension, overlap):
-    device = initialize_device()
-
     if embedding_type in ('bert', 'refinedweb'):
         tokenizer = AutoTokenizer.from_pretrained(model_name)
 
@@ -486,12 +464,12 @@ def saf_equals(
     else:
         raise ValueError(f"Unknown mode: {setting}")
 
+device = initialize_device()
 classification_model, dimension = load_model_and_tokenizer()
 app = Flask(__name__)
 
 @app.route('/equals', methods=('GET', 'POST'))
 def equals_route():
-    print('Router called')
     content_type = request.headers.get('Content-Type')
     if content_type == 'application/json' or content_type == 'application/json; utf-8':
         fixed_json = fix_json_crawling(request.data.decode('utf-8'))
@@ -506,16 +484,15 @@ def equals_route():
 
     dom1 = parametersJava['dom1']
     dom2 = parametersJava['dom2']
-
-    # with open('/Users/kasun/Documents/uni/semester-4/thesis/NDD/resources/doms/addressbook/doms/state141.html', 'r', encoding='utf-8') as f:
-    #     dom1 = f.read()
-    # with open('/Users/kasun/Documents/uni/semester-4/thesis/NDD/resources/doms/addressbook/doms/state165.html', 'r', encoding='utf-8') as f:
-    #     dom2 = f.read()
+    url1 = parametersJava['url1']
+    url2 = parametersJava['url2']
 
     # compute equality of DOM objects
     result = saf_equals(dom1, dom2, classification_model, model_name, embedding_type, setting, chunk_size, dimension, overlap, threshold=0.5)
     result = "true" if result == 1 else "false"
     increase_no_of_inferences()
+
+    print(f"[Info] url1 : {url1}, url2 : {url2}, results -> {result}")
     return result
 
 @app.route('/', methods=['GET'])
@@ -523,5 +500,5 @@ def index():
     return jsonify({"status": "OK", "message": "Service is up and running. Call /equals for SAF service"})
 
 if __name__ == "__main__":
-    print(f"******* We are using the model: {title}  *******")
+    print(f"******* We are using the model: {title} - {setting}  *******")
     app.run(debug=False)
