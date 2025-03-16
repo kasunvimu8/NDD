@@ -9,3 +9,6 @@ dataset/
 resources/
 results/
 embeddings/
+models/
+
+.DS_Store
