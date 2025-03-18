@@ -4,6 +4,9 @@ import sys
 from flask import Flask, request, jsonify
 import torch
 import torch.nn.functional as F
+from gensim.models import Doc2Vec
+from transformers import AutoTokenizer, AutoModel, MarkupLMProcessor
+
 os.environ["TOKENIZERS_PARALLELISM"] = "false"
 
 sys.path.append("/Users/kasun/Documents/uni/semester-4/thesis/NDD")
@@ -12,6 +15,32 @@ from scripts.utils.utils import fix_json_crawling, get_model, initialize_device,
 base_path        = "/Users/kasun/Documents/uni/semester-4/thesis/NDD"
 doc2vec_path     = f"/{base_path}/resources/embedding-models/content_tags_model_train_setsize300epoch50.doc2vec.model"
 no_of_inferences = 0
+
+app_to_dim = {
+    'withinapp_markuplm' : {
+        'addressbook' : 2304,
+        'claroline' : 768,
+        'ppma' : 768,
+        'mrbs' : 2304,
+        'mantisbt' : 1536,
+        'dimeshift' : 1536,
+        'pagekit' : 768,
+        'phoenix' : 768,
+        'petclinic' : 768,
+    },
+    'acrossapp_markuplm' : {
+        'addressbook' : 768,
+        'claroline' : 768,
+        'ppma' : 768,
+        'mrbs' : 768,
+        'mantisbt' : 768,
+        'dimeshift' : 768,
+        'pagekit' : 768,
+        'phoenix' : 768,
+        'petclinic' : 768,
+    },
+    
+}
 
 # Configurations
 configurations = [
@@ -210,9 +239,8 @@ configurations = [
 ]
 
 title            = "withinapp_doc2vec"
-appname          = "pagekit" # appname is treated as within app -> target app and across app -> test app
+appname          = "phoenix" # appname is treated as within app -> target app and across app -> test app
 setting          = "triplet" # contrastive or triplet
-dimensions       = 300
 
 current_configs   = [config for config in configurations if config['title'] == title]
 current_config    = current_configs[0] if (current_configs[0]['setting'] == 'contrastive' and setting == 'contrastive') else current_configs[1]
@@ -227,17 +255,46 @@ trained_epochs   = current_config['epochs']
 lr               = current_config['lr']
 
 
+if embedding_type == 'markuplm':
+    dimensions = app_to_dim[title][appname]
+elif embedding_type == 'bert':
+    dimensions = 768
+elif embedding_type == 'doc2vec':
+    dimensions = 300
+
 def increase_no_of_inferences():
     global no_of_inferences
     no_of_inferences += 1
     if no_of_inferences % 10 == 0:
         print(f"Number of inferences: {no_of_inferences}")
 
-def load_model_and_tokenizer():
+def load_model_and_tokenizer(embedding_type, model_name):
+    embedding_model = None
+    tokenizer = None
+    processor = None
     model_path = f"{base_path}/models/{title}_{setting}_{appname}_cl_{chunk_limit}_bs_128_ep_{trained_epochs}_lr_{lr}_wd_0.01.pt"
 
     if not os.path.exists(model_path):
         print(f"[Warning] Model file not found at {model_path}. Skipping.")
+        sys.exit(1)
+
+    if embedding_type == 'doc2vec':
+        embedding_model = Doc2Vec.load(doc2vec_path)
+        embedding_model.random.seed(42)  # fix seed if needed
+
+    elif embedding_type == 'bert':
+        tokenizer = AutoTokenizer.from_pretrained(model_name)
+
+        embedding_model = AutoModel.from_pretrained(model_name)
+        embedding_model.to(device)
+
+    elif embedding_type == 'markuplm':
+        processor = MarkupLMProcessor.from_pretrained(model_name)
+        processor.parse_html = False
+        embedding_model = AutoModel.from_pretrained(model_name)
+        embedding_model.to(device)
+    else:
+        print(f"[Error] Unknown embedding type {embedding_type}. Skipping.")
         sys.exit(1)
 
 
@@ -248,12 +305,9 @@ def load_model_and_tokenizer():
     classification_model.load_state_dict(model_state, strict=True)
     classification_model.eval()
 
-    return classification_model, dimensions
+    return classification_model, embedding_model, tokenizer, processor
 
-device = initialize_device()
-classification_model, dimension = load_model_and_tokenizer()
 app = Flask(__name__)
-
 @app.route('/equals', methods=('GET', 'POST'))
 def equals_route():
     content_type = request.headers.get('Content-Type')
@@ -274,7 +328,21 @@ def equals_route():
     url2 = parametersJava['url2']
 
     # compute equality of DOM objects
-    result = saf_equals(dom1, dom2, classification_model, model_name, embedding_type, setting, device, doc2vec_path, chunk_size, dimension, overlap, threshold=0.5)
+    result = saf_equals(
+        dom1=dom1,
+        dom2=dom2,
+        classification_model=classification_model,
+        embedding_model=embedding_model,
+        processor=processor,
+        tokenizer=tokenizer,
+        embedding_type=embedding_type,
+        setting=setting,
+        device=device,
+        chunk_size=chunk_size,
+        dimension=dimensions,
+        overlap=overlap,
+        threshold=0.5
+       )
     result = "true" if result == 1 else "false"
     increase_no_of_inferences()
 
@@ -286,5 +354,7 @@ def index():
     return jsonify({"status": "OK", "message": "Service is up and running. Call /equals for SAF service"})
 
 if __name__ == "__main__":
-    print(f"******* We are using the model: {title} - {setting}  *******")
+    device = initialize_device()
+    classification_model, embedding_model, tokenizer, processor = load_model_and_tokenizer(embedding_type, model_name)
+    print(f"******* We are using the model: {appname} - {title} - {setting} *******")
     app.run(debug=False)

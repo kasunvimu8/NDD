@@ -541,17 +541,13 @@ def embed_dom_markuplm_crawling(dom_str, markup_model, processor, device, chunk_
 
     return final_emb  # shape [1, dimension]
 
-def get_embedding(dom_str, model_name, embedding_type, chunk_size, dimension, overlap, device, doc2vec_path):
+
+def get_embedding(dom_str, embedding_model, tokenizer, processor, embedding_type, chunk_size, dimension, overlap, device):
     if embedding_type in ('bert', 'refinedweb'):
-        tokenizer = AutoTokenizer.from_pretrained(model_name)
-
-        bert_model = AutoModel.from_pretrained(model_name)
-        bert_model.to(device)
-
         state_embedding = embed_dom_bert_crawling(
             dom_str=dom_str,
             tokenizer=tokenizer,
-            embedding_model=bert_model,
+            embedding_model=embedding_model,
             device=device,
             chunk_size=chunk_size,
             dimension=dimension,
@@ -559,14 +555,9 @@ def get_embedding(dom_str, model_name, embedding_type, chunk_size, dimension, ov
         )
         return state_embedding
     elif embedding_type == 'markuplm':
-        processor = MarkupLMProcessor.from_pretrained(model_name)
-        processor.parse_html = False
-        markup_model = AutoModel.from_pretrained(model_name)
-        markup_model.to(device)
-
         state_embedding = embed_dom_markuplm_crawling(
             dom_str=dom_str,
-            markup_model=markup_model,
+            markup_model=embedding_model,
             processor=processor,
             device=device,
             chunk_size=chunk_size,
@@ -576,39 +567,30 @@ def get_embedding(dom_str, model_name, embedding_type, chunk_size, dimension, ov
         print(f"shape {state_embedding.shape}")
         return state_embedding
     elif embedding_type == 'doc2vec':
-        doc2vec_model = Doc2Vec.load(doc2vec_path)
-        doc2vec_model.random.seed(42)  # fix seed if needed
-
-        # produce [1, 300]
-        state_embedding = embed_dom_doc2vec_crawling(dom_str, doc2vec_model, device)
+        state_embedding = embed_dom_doc2vec_crawling(dom_str, embedding_model, device)
         return state_embedding
     else:
         raise ValueError(f"Unknown embedding_type: {embedding_type}")
 
+
+# This is the exact same function is utils but we remove the model loading part
 def saf_equals(
         dom1,
         dom2,
         classification_model,
-        model_name,
+        embedding_model,
+        tokenizer,
+        processor,
         embedding_type,
         setting,
         device,
-        doc2vec_path,
-        chunk_size=512,
-        dimension=768,
-        overlap=0,
-        threshold=0.5
+        chunk_size,
+        dimension,
+        overlap,
+        threshold,
 ):
-    """
-    Returns 1 if dom1 and dom2 are considered duplicates, else 0.
-
-    setting="contrastive":  uses classification_model(emb1, emb2) -> outputs['logits']
-                 probability => compare with threshold
-    setting="triplet": uses classification_model.forward_once(...) and
-                    distance => compare with threshold
-    """
-    emb1 = get_embedding(dom1, model_name, embedding_type, chunk_size, dimension, overlap, device, doc2vec_path)
-    emb2 = get_embedding(dom2, model_name, embedding_type, chunk_size, dimension, overlap, device, doc2vec_path)
+    emb1 = get_embedding(dom1, embedding_model, tokenizer, processor, embedding_type, chunk_size, dimension, overlap, device)
+    emb2 = get_embedding(dom2, embedding_model, tokenizer, processor, embedding_type, chunk_size, dimension, overlap, device)
 
     if setting == "contrastive":
         # Contrastive(BCE) approach
