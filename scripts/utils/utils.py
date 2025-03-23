@@ -13,8 +13,6 @@ from datetime import datetime
 import sqlite3
 from torch.backends import mps
 import json
-from gensim.models import Doc2Vec
-from transformers import AutoTokenizer, AutoModel, MarkupLMProcessor
 from scripts.utils.networks import ContrastiveSiameseNN, TripletSiameseNN
 import torch.nn.functional as F
 
@@ -209,7 +207,8 @@ def load_pairs_from_db(db_path, table_name, selected_apps):
           "appname": str,
           "state1": str,
           "state2": str,
-          "label": 0 or 1
+          "label": 0 or 1,
+          "nd_type": -1, 0, 2, 3 (-1 - non retained pairs, 0 = non nd, 2 - nd2, 3 - nd3)
         }
     Returns a list of pairs (dict).
     """
@@ -224,7 +223,8 @@ def load_pairs_from_db(db_path, table_name, selected_apps):
             state1,
             state2,
             HUMAN_CLASSIFICATION,
-            is_retained
+            is_retained,
+            nd_type
         FROM {table_name}
         WHERE appname IN ({placeholders})
     """
@@ -235,7 +235,7 @@ def load_pairs_from_db(db_path, table_name, selected_apps):
 
     try:
         rows = cursor.execute(query).fetchall()
-        for appname, s1, s2, hc, retained_val in rows:
+        for appname, s1, s2, hc, retained_val, nd_type in rows:
             if retained_val != 1:
                 continue
             label = map_labels(hc)
@@ -245,7 +245,8 @@ def load_pairs_from_db(db_path, table_name, selected_apps):
                 "appname": appname,
                 "state1":  s1,
                 "state2":  s2,
-                "label":   label
+                "label":   label,
+                "nd_type": nd_type
             })
             # Update class distribution for this app
             app_class_dist[appname][label] += 1
@@ -564,7 +565,6 @@ def get_embedding(dom_str, embedding_model, tokenizer, processor, embedding_type
             dimension=dimension,
             overlap=overlap
         )
-        print(f"shape {state_embedding.shape}")
         return state_embedding
     elif embedding_type == 'doc2vec':
         state_embedding = embed_dom_doc2vec_crawling(dom_str, embedding_model, device)

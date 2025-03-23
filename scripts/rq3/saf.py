@@ -238,8 +238,8 @@ configurations = [
     }
 ]
 
-title            = "withinapp_doc2vec"
-appname          = "phoenix" # appname is treated as within app -> target app and across app -> test app
+title            = "acrossapp_markuplm"
+appname          = "mantisbt" # appname is treated as within app -> target app and across app -> test app
 setting          = "triplet" # contrastive or triplet
 
 current_configs   = [config for config in configurations if config['title'] == title]
