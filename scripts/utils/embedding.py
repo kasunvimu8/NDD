@@ -329,7 +329,7 @@ def run_embedding_pipeline_markuplm(
     cache_path
 ):
     if os.path.exists(cache_path):
-        print("[Info] Loading cached BERT embeddings.")
+        print("[Info] Loading cached MARKUPLM embeddings.")
         with open(cache_path, "rb") as f:
             state_embeddings, final_input_dim = pickle.load(f)
         return state_embeddings, final_input_dim
