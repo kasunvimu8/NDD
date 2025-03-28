@@ -22,6 +22,7 @@ def plot_grouped_bars_on_ax(ax, df, title):
         "Webembed":  "#FBBC05",
         "FragGen":   "#26CDE8",
         "SNN (T1)":  "#4285F4",
+        "SNN (T4)":  "#26CDE8",
         "SNN (T6)":  "#4285F4",
         "Total":     "#EA4335"
     }
@@ -57,6 +58,7 @@ if __name__ == "__main__":
         ("acrossapp", "RTED", 3126, 7471, 1169, 11766, 69034),
         ("acrossapp", "PDiff", 3170, 5935, 740, 9845, 73065),
         ("acrossapp", "Webembed", 2761, 6014, 1953, 10728, 73158),
+        ("acrossapp", "SNN (T4)", 3174, 6187, 758, 10119, 69421),
         ("acrossapp", "SNN (T6)", 3190, 6948, 1591, 11729, 67754),
         ("acrossapp", "Total", 3204, 8675, 2886, 14765, 75225),
     ]
