@@ -9,7 +9,7 @@ from gensim.models import Doc2Vec
 from torch import cosine_similarity
 sys.path.append("/Users/kasun/Documents/uni/semester-4/thesis/NDD")
 
-from scripts.utils.utils import embed_dom_doc2vec_crawling, initialize_device
+from scripts.utils.utils import embed_dom_doc2vec_crawling, initialize_device, fix_json_crawling
 
 # -----------------------------------------------------------------
 #  Global settings and baseline model info
@@ -43,13 +43,6 @@ def increase_no_of_inferences():
     no_of_inferences += 1
     if no_of_inferences % 10 == 0:
         print(f"[Info] Number of inferences: {no_of_inferences}")
-
-def fix_json_crawling(data_str: str):
-    try:
-        _ = json.loads(data_str)  # will raise if not valid
-        return data_str
-    except Exception:
-        return "Error decoding JSON"
 
 def load_baseline_model(appname, setting):
     if appname not in SELECTED_APPS:
