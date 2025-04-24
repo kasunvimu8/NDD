@@ -475,7 +475,8 @@ def embed_dom_doc2vec_crawling(dom_str, doc2vec_model, device):
     tokens = clean_str.split()
 
     # shape [300]
-    doc_vec = doc2vec_model.infer_vector(tokens)
+    doc2vec_model.random.seed(42)
+    doc_vec = doc2vec_model.infer_vector(tokens, alpha=0.025, min_alpha=0.025, epochs=50)
 
     # Convert to torch and reshape to [1, 300]
     emb = torch.tensor(doc_vec, dtype=torch.float, device=device).unsqueeze(0)

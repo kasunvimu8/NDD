@@ -80,8 +80,8 @@ def saf_equals_baseline(dom1, dom2, classifier, doc2vec_model, device):
 app = Flask(__name__)
 
 # Configure the baseline parameters for the webembed method.
-appname = "petclinic"        # one of SELECTED_APPS
-setting = "withinapps"       # valid options: 'withinapps' or 'acrossapp'
+appname = "phoenix"        # one of SELECTED_APPS
+setting = "acrossapp"       # valid options: 'withinapps' or 'acrossapp'
 classifier_baseline = load_baseline_model(appname, setting)
 
 device = initialize_device()

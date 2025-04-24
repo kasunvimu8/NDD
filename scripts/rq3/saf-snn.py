@@ -10,7 +10,7 @@ from transformers import AutoTokenizer, AutoModel, MarkupLMProcessor
 os.environ["TOKENIZERS_PARALLELISM"] = "false"
 
 sys.path.append("/Users/kasun/Documents/uni/semester-4/thesis/NDD")
-from scripts.utils.utils import fix_json_crawling, get_model, initialize_device, saf_equals
+from scripts.utils.utils import fix_json_crawling, get_model, initialize_device, saf_equals, set_all_seeds
 
 base_path        = "/Users/kasun/Documents/uni/semester-4/thesis/NDD"
 doc2vec_path     = f"/{base_path}/resources/embedding-models/content_tags_model_train_setsize300epoch50.doc2vec.model"
@@ -354,6 +354,8 @@ def index():
     return jsonify({"status": "OK", "message": "Service is up and running. Call /equals for SAF service"})
 
 if __name__ == "__main__":
+    seed = 42
+    set_all_seeds(seed)
     device = initialize_device()
     classification_model, embedding_model, tokenizer, processor = load_model_and_tokenizer(embedding_type, model_name)
     print(f"******* We are using the model: {appname} - {title} - {setting} *******")

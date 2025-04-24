@@ -3,6 +3,9 @@ import sys
 import json
 import pickle
 from flask import Flask, request, jsonify
+sys.path.append("/Users/kasun/Documents/uni/semester-4/thesis/NDD")
+
+from scripts.utils.utils import fix_json_crawling
 
 # -----------------------------------------------------------------
 #  Global settings and baseline model info
@@ -39,14 +42,6 @@ def increase_no_of_inferences():
     no_of_inferences += 1
     if no_of_inferences % 10 == 0:
         print(f"[Info] Number of inferences: {no_of_inferences}")
-
-
-def fix_json_crawling(data_str: str):
-    try:
-        _ = json.loads(data_str)
-        return data_str
-    except Exception:
-        return "Error decoding JSON"
 
 
 def load_baseline_model(appname, method, setting):
@@ -91,9 +86,9 @@ def saf_equals_baseline_distance(distance, classifier):
 # -----------------------------------------------------------------
 app = Flask(__name__)
 
-appname = "petclinic"  # one of SELECTED_APPS
+appname = "phoenix"  # one of SELECTED_APPS
 method = "DOM_RTED"  # one of:"DOM_RTED", "VISUAL_PDiff"
-setting = "withinapps"  # either 'withinapps' or 'acrossapp'
+setting = "acrossapp"  # either 'withinapps' or 'acrossapp'
 classifier_baseline = load_baseline_model(appname, method, setting)
 
 @app.route('/', methods=['GET'])
@@ -116,6 +111,7 @@ def equals_route():
         return "Error decoding JSON", 400
 
     data = json.loads(fixed_json)
+    print(data)
 
     distance = data['distance']
 
