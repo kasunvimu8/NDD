@@ -124,7 +124,6 @@ if __name__ == "__main__":
                 val_loss = validate_model_triplet(model, val_loader, device, threshold=0.5)
                 print(f"  Epoch {epoch + 1}/{num_epochs} => Train Loss: {train_loss:.4f}, Val Loss: {val_loss:.4f}")
             training_time = time.time() - start_time
-            os.makedirs("models", exist_ok=True)
             torch.save(model.state_dict(), model_file)
             print(f"[Info] Model saved to {model_file}")
 
