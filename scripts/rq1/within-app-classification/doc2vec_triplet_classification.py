@@ -46,10 +46,10 @@ if __name__ == "__main__":
 
     doc2vec_path    = "/Users/kasun/Documents/uni/semester-4/thesis/NDD/resources/embedding-models/content_tags_model_train_setsize300epoch50.doc2vec.model"
 
-    batch_size    = 128
-    num_epochs    = 50
+    batch_size    = 32
+    num_epochs    = 15
     lr            = 1e-3
-    weight_decay  = 0.01
+    weight_decay  = 0.05
     chunk_limit   = 5
     overlap       = 0
     margin        = 1
@@ -113,7 +113,6 @@ if __name__ == "__main__":
                 val_loss = validate_model_triplet(model, val_loader, device, threshold=0.5)
                 print(f"  Epoch {epoch + 1}/{num_epochs} => Train Loss: {train_loss:.4f}, Val Loss: {val_loss:.4f}")
             training_time = time.time() - start_time
-            os.makedirs("models", exist_ok=True)
             torch.save(model.state_dict(), model_file)
             print(f"[Info] Model saved to {model_file}")
 

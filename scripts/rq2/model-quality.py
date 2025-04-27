@@ -99,16 +99,60 @@ APPS = [
 # All configuration for within app model quality assessment
 configurations = [
     {
-        'model_name' : "bert-base-uncased",
-        'title' : "withinapp_bert",
-        'embedding_type' : "bert",
-        'setting' : "contrastive",
-        'chunk_size' : 512,
-        'overlap' : 0,
-        'chunk_limit' : 5,
-        'doc2vec_path' : None,
-        'lr' : 5e-05,
-        'epochs' : 50,
+        'model_name': None,
+        'title': "withinapp_doc2vec",
+        'embedding_type': "doc2vec",
+        'setting': "contrastive",
+        'chunk_size': 512,
+        'overlap': 0,
+        'chunk_limit': 5,
+        'doc2vec_path': doc2vec_path,
+        'lr' : 1e-04,
+        'epochs' : 15,
+        'wd' : 0.05,
+        'bs' : 32,
+    },
+    {
+        'model_name': "bert-base-uncased",
+        'title': "withinapp_bert",
+        'embedding_type': "bert",
+        'setting': "contrastive",
+        'chunk_size': 512,
+        'overlap': 0,
+        'chunk_limit': 5,
+        'doc2vec_path': None,
+        'lr': 1e-04,
+        'epochs': 15,
+        'wd' : 0.05,
+        'bs' : 32,
+    },
+    {
+        'model_name': "microsoft/markuplm-base",
+        'title': "withinapp_markuplm",
+        'embedding_type': "markuplm",
+        'setting': "contrastive",
+        'chunk_size': 512,
+        'overlap': 0,
+        'chunk_limit': 5,
+        'doc2vec_path': None,
+        'lr': 1e-04,
+        'epochs': 15,
+        'wd' : 0.05,
+        'bs' : 32,
+    },
+    {
+        'model_name': None,
+        'title': "withinapp_doc2vec",
+        'embedding_type': "doc2vec",
+        'setting': "triplet",
+        'chunk_size': 512,
+        'overlap': 0,
+        'chunk_limit': 5,
+        'doc2vec_path': doc2vec_path,
+        'lr': 1e-03,
+        'epochs': 15,
+        'wd': 0.05,
+        'bs': 32,
     },
     {
         'model_name': "bert-base-uncased",
@@ -118,45 +162,11 @@ configurations = [
         'chunk_size': 512,
         'overlap': 0,
         'chunk_limit': 5,
-        'doc2vec_path' : None,
-        'lr' : 0.0005,
-        'epochs' : 50,
-    },
-    {
-        'model_name': None,
-        'title': "withinapp_doc2vec",
-        'embedding_type': "doc2vec",
-        'setting': "contrastive",
-        'chunk_size': 512,
-        'overlap': 0,
-        'chunk_limit': 5,
-        'doc2vec_path': doc2vec_path,
-        'lr' : 5e-05,
-        'epochs' : 50,
-    },
-    {
-        'model_name': None,
-        'title': "withinapp_doc2vec",
-        'embedding_type': "doc2vec",
-        'setting': "triplet",
-        'chunk_size': 512,
-        'overlap': 0,
-        'chunk_limit': 5,
-        'doc2vec_path': doc2vec_path,
-        'lr' : 0.001,
-        'epochs': 50,
-    },
-    {
-        'model_name': "microsoft/markuplm-base",
-        'title': "withinapp_markuplm",
-        'embedding_type': "markuplm",
-        'setting': "contrastive",
-        'chunk_size': 512,
-        'overlap': 0,
-        'chunk_limit': 5,
         'doc2vec_path': None,
-        'lr' : 5e-05,
-        'epochs': 50,
+        'lr': 1e-03,
+        'epochs': 15,
+        'wd': 0.05,
+        'bs': 32,
     },
     {
         'model_name': "microsoft/markuplm-base",
@@ -167,20 +177,66 @@ configurations = [
         'overlap': 0,
         'chunk_limit': 5,
         'doc2vec_path': None,
-        'lr' : 0.0005,
-        'epochs': 50,
+        'lr': 1e-03,
+        'epochs': 15,
+        'wd': 0.05,
+        'bs': 32,
     },
     {
-        'model_name' : "bert-base-uncased",
-        'title' : "acrossapp_bert",
-        'embedding_type' : "bert",
-        'setting' : "contrastive",
-        'chunk_size' : 512,
-        'overlap' : 0,
-        'chunk_limit' : 2,
-        'doc2vec_path' : None,
-        'lr' : 2e-05,
-        'epochs' : 10,
+        'model_name': None,
+        'title': "acrossapp_doc2vec",
+        'embedding_type': "doc2vec",
+        'setting': "contrastive",
+        'chunk_size': 512,
+        'overlap': 0,
+        'chunk_limit': 2,
+        'doc2vec_path': doc2vec_path,
+        'lr': 2e-05,
+        'epochs': 10,
+        'wd': 0.01,
+        'bs': 128,
+    },
+    {
+        'model_name': "bert-base-uncased",
+        'title': "acrossapp_bert",
+        'embedding_type': "bert",
+        'setting': "contrastive",
+        'chunk_size': 512,
+        'overlap': 0,
+        'chunk_limit': 2,
+        'doc2vec_path': None,
+        'lr': 2e-05,
+        'epochs': 10,
+        'wd': 0.01,
+        'bs': 128,
+    },
+    {
+        'model_name': "microsoft/markuplm-base",
+        'title': "acrossapp_markuplm",
+        'embedding_type': "markuplm",
+        'setting': "contrastive",
+        'chunk_size': 512,
+        'overlap': 0,
+        'chunk_limit': 1,
+        'doc2vec_path': None,
+        'lr': 2e-05,
+        'epochs': 15,
+        'wd': 0.01,
+        'bs': 128,
+    },
+    {
+        'model_name': None,
+        'title': "acrossapp_doc2vec",
+        'embedding_type': "doc2vec",
+        'setting': "triplet",
+        'chunk_size': 512,
+        'overlap': 0,
+        'chunk_limit': 2,
+        'doc2vec_path': doc2vec_path,
+        'lr': 0.0001,
+        'epochs': 7,
+        'wd': 0.01,
+        'bs': 128,
     },
     {
         'model_name': "bert-base-uncased",
@@ -190,45 +246,11 @@ configurations = [
         'chunk_size': 512,
         'overlap': 0,
         'chunk_limit': 2,
-        'doc2vec_path' : None,
-        'lr' : 2e-05,
-        'epochs' : 15,
-    },
-    {
-        'model_name': None,
-        'title': "acrossapp_doc2vec",
-        'embedding_type': "doc2vec",
-        'setting': "contrastive",
-        'chunk_size': 512,
-        'overlap': 0,
-        'chunk_limit': 2,
-        'doc2vec_path': doc2vec_path,
-        'lr' : 2e-05,
-        'epochs' : 10,
-    },
-    {
-        'model_name': None,
-        'title': "acrossapp_doc2vec",
-        'embedding_type': "doc2vec",
-        'setting': "triplet",
-        'chunk_size': 512,
-        'overlap': 0,
-        'chunk_limit': 2,
-        'doc2vec_path': doc2vec_path,
-        'lr' : 0.0001,
-        'epochs': 7,
-    },
-    {
-        'model_name': "microsoft/markuplm-base",
-        'title': "acrossapp_markuplm",
-        'embedding_type': "markuplm",
-        'setting': "contrastive",
-        'chunk_size': 512,
-        'overlap': 0,
-        'chunk_limit': 1,
         'doc2vec_path': None,
-        'lr' : 2e-05,
+        'lr': 2e-05,
         'epochs': 15,
+        'wd': 0.01,
+        'bs': 128,
     },
     {
         'model_name': "microsoft/markuplm-base",
@@ -239,57 +261,11 @@ configurations = [
         'overlap': 0,
         'chunk_limit': 1,
         'doc2vec_path': None,
-        'lr' : 2e-05,
+        'lr': 2e-05,
         'epochs': 12,
+        'wd': 0.01,
+        'bs': 128,
     },
-    {
-        'model_name': "Rocketknight1/falcon-rw-1b",
-        'title': "acrossapp_refinedweb",
-        'embedding_type': "refinedweb",
-        'setting': "contrastive",
-        'chunk_size': 512,
-        'overlap': 0,
-        'chunk_limit': 2,
-        'doc2vec_path': None,
-        'lr': 2e-05,
-        'epochs': 10,
-    },
-    {
-        'model_name': "Rocketknight1/falcon-rw-1b",
-        'title': "acrossapp_refinedweb",
-        'embedding_type': "refinedweb",
-        'setting': "triplet",
-        'chunk_size': 512,
-        'overlap': 0,
-        'chunk_limit': 2,
-        'doc2vec_path': None,
-        'lr': 2e-05,
-        'epochs': 15,
-    },
-    {
-        'model_name': "Rocketknight1/falcon-rw-1b",
-        'title': "withinapp_refinedweb",
-        'embedding_type': "refinedweb",
-        'setting': "contrastive",
-        'chunk_size': 512,
-        'overlap': 0,
-        'chunk_limit': 5,
-        'doc2vec_path': None,
-        'lr': 5e-05,
-        'epochs': 50,
-    },
-    {
-        'model_name': "Rocketknight1/falcon-rw-1b",
-        'title': "withinapp_refinedweb",
-        'embedding_type': "refinedweb",
-        'setting': "triplet",
-        'chunk_size': 512,
-        'overlap': 0,
-        'chunk_limit': 5,
-        'doc2vec_path': None,
-        'lr': 0.0005,
-        'epochs': 50,
-    }
 ]
 
 
@@ -308,15 +284,15 @@ if __name__ == '__main__':
     device = initialize_device()
 
     for config in configurations:
-        model_name, title, embedding_type, chunk_size, overlap, chunk_limit, doc2vec_path, setting, lr, epochs = (
-            config[k] for k in ["model_name", "title", "embedding_type", "chunk_size", "overlap", "chunk_limit", "doc2vec_path", "setting", "lr", "epochs"]
+        model_name, title, embedding_type, chunk_size, overlap, chunk_limit, doc2vec_path, setting, lr, epochs, wd, bs = (
+            config[k] for k in ["model_name", "title", "embedding_type", "chunk_size", "overlap", "chunk_limit", "doc2vec_path", "setting", "lr", "epochs", "wd", "bs"]
         )
 
         print(f'\n======== Setting {setting}  Embedding : {embedding_type} ========')
-        filename = f'{base_path}/results/rq2/{title}_{setting}_test_model_quality.csv'
+        filename = f'{base_path}/results/rq2/new_{title}_{setting}_test_model_quality.csv'
 
         if OUTPUT_CSV and not os.path.exists(filename):
-            header = ['Setting', 'App', 'Method', 'F1', 'Precision', 'Recall']
+            header = ['Setting', 'App', 'Method', 'Precision', 'Recall', 'F1']
             with open(filename, 'w', encoding='UTF8') as f:
                 writer = csv.writer(f)
                 writer.writerow(header)
@@ -324,7 +300,7 @@ if __name__ == '__main__':
         for app in APPS:
                 print(f'\n=== Coverage for App={app}  ===')
 
-                model_path = f"{base_path}/models/{title}_{setting}_{app}_cl_{chunk_limit}_bs_128_ep_{epochs}_lr_{lr}_wd_0.01.pt"
+                model_path = f"{base_path}/models/{title}_{setting}_{app}_cl_{chunk_limit}_bs_{bs}_ep_{epochs}_lr_{lr}_wd_{wd}.pt"
                 if not os.path.exists(model_path):
                     print(f"[Warning] Model file not found for {app} at {model_path}. Skipping.")
                     continue
@@ -430,5 +406,5 @@ if __name__ == '__main__':
                 if OUTPUT_CSV:
                     with open(filename, 'a', encoding='UTF8') as f:
                         writer = csv.writer(f)
-                        writer.writerow([title, app, 'SiameseNN', f1_score, precision, recall])
+                        writer.writerow([title, app, 'SiameseNN', precision, recall, f1_score])
 
