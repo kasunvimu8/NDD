@@ -249,7 +249,7 @@ configurations = [
         'overlap': 0,
         'chunk_limit': 2,
         'doc2vec_path': None,
-        'lr': 2e-05,
+        'lr': 0,
         'epochs': 10,
         'wd': 0.01,
         'bs': 128,
@@ -346,7 +346,7 @@ if __name__ == '__main__':
 
         print(f'\n======== Setting {setting}  Embedding : {embedding_type} ========')
         timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-        filename = f'{base_path}/results/rq2/new_{title}_{setting}_test_model_quality_{timestamp}.csv'
+        filename = f'{base_path}/results/rq2/new_{title}_{setting}_model_quality_{timestamp}.csv'
 
         if OUTPUT_CSV and not os.path.exists(filename):
             header = ['Setting', 'App', 'Method', 'Precision', 'Recall', 'F1']
