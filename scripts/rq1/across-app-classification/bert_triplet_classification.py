@@ -42,20 +42,27 @@ if __name__ == "__main__":
     results_dir   = f"{base_path}/results"
     model_dir     = f"{base_path}/models"
     emb_dir       = f"{base_path}/embeddings"
-    title         = "acrossapp_bert"
     setting_key   = "triplet"
-    model_name    = "bert-base-uncased"
     save_results  = True
 
     # Hyperparameters
-    chunk_size    = 512
-    batch_size    = 128
-    num_epochs    = 15
-    lr            = 2e-5
+    batch_size    = 64
+    num_epochs    = 30
+    lr            = 5e-6
     weight_decay  = 0.01
     chunk_limit   = 2
     overlap       = 0
     margin        = 1.0
+
+    #for bert-base uncomment below
+    #model_name    = "bert-base-uncased"
+    #chunk_size    = 512
+    #title         = "acrossapp_bert"
+
+    #for bert-base uncomment below
+    title         = "acrossapp_modernbert"
+    model_name = "answerdotai/ModernBERT-base"
+    chunk_size = 8192
 
     results = []
 

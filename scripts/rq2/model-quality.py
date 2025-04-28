@@ -2,6 +2,8 @@ import csv
 import json
 import os
 import sys
+from datetime import datetime
+
 import torch.nn.functional as F
 import torch
 from transformers import AutoTokenizer, AutoModel
@@ -9,7 +11,7 @@ sys.path.append("/Users/kasun/Documents/uni/semester-4/thesis/NDD")
 
 from scripts.utils.embedding import run_embedding_pipeline_bert, run_embedding_pipeline_doc2vec, run_embedding_pipeline_markuplm
 from scripts.utils.utils import load_single_app_pairs_from_db, initialize_device, get_model
-
+import time
 
 def is_duplicate_contrastive(model, state_embeddings, app, state1, state2, device, threshold=0.5):
     model.eval()
@@ -127,6 +129,20 @@ configurations = [
         'bs' : 32,
     },
     {
+        'model_name': "answerdotai/ModernBERT-base",
+        'title': "withinapp_modernbert",
+        'embedding_type': "bert",
+        'setting': "contrastive",
+        'chunk_size': 8192,
+        'overlap': 0,
+        'chunk_limit': 5,
+        'doc2vec_path': None,
+        'lr': 1e-04,
+        'epochs': 15,
+        'wd': 0.05,
+        'bs': 32,
+    },
+    {
         'model_name': "microsoft/markuplm-base",
         'title': "withinapp_markuplm",
         'embedding_type': "markuplm",
@@ -169,6 +185,20 @@ configurations = [
         'bs': 32,
     },
     {
+        'model_name': "answerdotai/ModernBERT-base",
+        'title': "withinapp_modernbert",
+        'embedding_type': "bert",
+        'setting': "triplet",
+        'chunk_size': 8192,
+        'overlap': 0,
+        'chunk_limit': 5,
+        'doc2vec_path': None,
+        'lr': 1e-03,
+        'epochs': 15,
+        'wd': 0.05,
+        'bs': 32,
+    },
+    {
         'model_name': "microsoft/markuplm-base",
         'title': "withinapp_markuplm",
         'embedding_type': "markuplm",
@@ -202,6 +232,20 @@ configurations = [
         'embedding_type': "bert",
         'setting': "contrastive",
         'chunk_size': 512,
+        'overlap': 0,
+        'chunk_limit': 2,
+        'doc2vec_path': None,
+        'lr': 2e-05,
+        'epochs': 10,
+        'wd': 0.01,
+        'bs': 128,
+    },
+    {
+        'model_name': "answerdotai/ModernBERT-base",
+        'title': "acrossapp_modernbert",
+        'embedding_type': "bert",
+        'setting': "contrastive",
+        'chunk_size': 8192,
         'overlap': 0,
         'chunk_limit': 2,
         'doc2vec_path': None,
@@ -253,6 +297,20 @@ configurations = [
         'bs': 128,
     },
     {
+        'model_name': "answerdotai/ModernBERT-base",
+        'title': "acrossapp_modernbert",
+        'embedding_type': "bert",
+        'setting': "triplet",
+        'chunk_size': 8192,
+        'overlap': 0,
+        'chunk_limit': 2,
+        'doc2vec_path': None,
+        'lr': 2e-05,
+        'epochs': 15,
+        'wd': 0.01,
+        'bs': 128,
+    },
+    {
         'model_name': "microsoft/markuplm-base",
         'title': "acrossapp_markuplm",
         'embedding_type': "markuplm",
@@ -267,8 +325,6 @@ configurations = [
         'bs': 128,
     },
 ]
-
-
 
 OUTPUT_CSV = True
 table_name   = "nearduplicates"
@@ -289,7 +345,8 @@ if __name__ == '__main__':
         )
 
         print(f'\n======== Setting {setting}  Embedding : {embedding_type} ========')
-        filename = f'{base_path}/results/rq2/new_{title}_{setting}_test_model_quality.csv'
+        timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+        filename = f'{base_path}/results/rq2/new_{title}_{setting}_test_model_quality_{timestamp}.csv'
 
         if OUTPUT_CSV and not os.path.exists(filename):
             header = ['Setting', 'App', 'Method', 'Precision', 'Recall', 'F1']

@@ -41,18 +41,25 @@ if __name__ == "__main__":
     results_dir  = f"{base_path}/results"
     model_dir    = f"{base_path}/models"
     emb_dir      = f"{base_path}/embeddings"
-    title        = "withinapp_bert"
     setting_key  = "contrastive"
-    model_name   = "bert-base-uncased"
     save_results = True
 
-    chunk_size   = 512
     batch_size   = 32
     num_epochs   = 15
     lr           = 1e-4
     weight_decay = 0.05
     chunk_limit  = 5
     overlap      = 0
+
+    #for bert-base uncomment below
+    #model_name    = "bert-base-uncased"
+    #chunk_size    = 512
+    #title         = "withinapp_bert"
+
+    #for modern-bert-base uncomment below
+    title           = "withinapp_modernbert"
+    model_name      = "answerdotai/ModernBERT-base"
+    chunk_size      = 8192
 
     results = []
 
