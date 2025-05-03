@@ -87,7 +87,7 @@ def get_embedding_and_dimension(
             cache_path=cache_path
         )
 
-    elif embedding_type == 'bert':
+    elif embedding_type == 'bert' or embedding_type == 'modernbert':
         tokenizer = AutoTokenizer.from_pretrained(model_name)
         bert_model = AutoModel.from_pretrained(model_name)
         state_embeddings, final_input_dim = run_embedding_pipeline_bert(
@@ -190,9 +190,6 @@ def run_test_and_collect_predictions(model, data_loader, device, setting, thresh
 
 if __name__ == "__main__":
 
-    # ---------------------------
-    #   Basic Setup
-    # ---------------------------
     seed = 42
     set_all_seeds(seed)
     device = initialize_device()
@@ -212,41 +209,10 @@ if __name__ == "__main__":
         'addressbook', 'claroline', 'ppma', 'mrbs',
         'mantisbt', 'dimeshift', 'pagekit', 'phoenix', 'petclinic'
     ]
-    batch_size = 128
-    weight_decay = 0.01
     save_results = True
 
-    # ---------------------------
-    #   Configurations
-    # ---------------------------
     configurations = [
         {
-            'model_name': "bert-base-uncased",
-            'title': "withinapp_bert",
-            'embedding_type': "bert",
-            'setting': "contrastive",
-            'chunk_size': 512,
-            'overlap': 0,
-            'chunk_limit': 5,
-            'doc2vec_path': None,
-            'lr': 5e-05,
-            'epochs': 50,
-            'dimension': 768,
-        },
-        {
-            'model_name': "bert-base-uncased",
-            'title': "withinapp_bert",
-            'embedding_type': "bert",
-            'setting': "triplet",
-            'chunk_size': 512,
-            'overlap': 0,
-            'chunk_limit': 5,
-            'doc2vec_path': None,
-            'lr': 0.0005,
-            'epochs': 50,
-            'dimension': 768,
-        },
-        {
             'model_name': None,
             'title': "withinapp_doc2vec",
             'embedding_type': "doc2vec",
@@ -255,74 +221,117 @@ if __name__ == "__main__":
             'overlap': 0,
             'chunk_limit': 5,
             'doc2vec_path': doc2vec_path,
-            'lr': 5e-05,
-            'epochs': 50,
-            'dimension': 300,
-        },
-        {
-            'model_name': None,
-            'title': "withinapp_doc2vec",
-            'embedding_type': "doc2vec",
-            'setting': "triplet",
-            'chunk_size': 512,
-            'overlap': 0,
-            'chunk_limit': 5,
-            'doc2vec_path': doc2vec_path,
-            'lr': 0.001,
-            'epochs': 50,
-            'dimension': 300,
-        },
-        {
-            'model_name': "microsoft/markuplm-base",
-            'title': "withinapp_markuplm",
-            'embedding_type': "markuplm",
-            'setting': "contrastive",
-            'chunk_size': 512,
-            'overlap': 0,
-            'chunk_limit': 5,
-            'doc2vec_path': None,
-            'lr': 5e-05,
-            'epochs': 50,
-            'dimension': 2304,
-        },
-        {
-            'model_name': "microsoft/markuplm-base",
-            'title': "withinapp_markuplm",
-            'embedding_type': "markuplm",
-            'setting': "triplet",
-            'chunk_size': 512,
-            'overlap': 0,
-            'chunk_limit': 5,
-            'doc2vec_path': None,
-            'lr': 0.0005,
-            'epochs': 50,
-            'dimension': 2304,
-        },
-        {
-            'model_name': "bert-base-uncased",
-            'title': "acrossapp_bert",
-            'embedding_type': "bert",
-            'setting': "contrastive",
-            'chunk_size': 512,
-            'overlap': 0,
-            'chunk_limit': 2,
-            'doc2vec_path': None,
-            'lr': 2e-05,
-            'epochs': 10,
-            'dimension': 768,
-        },
-        {
-            'model_name': "bert-base-uncased",
-            'title': "acrossapp_bert",
-            'embedding_type': "bert",
-            'setting': "triplet",
-            'chunk_size': 512,
-            'overlap': 0,
-            'chunk_limit': 2,
-            'doc2vec_path': None,
-            'lr': 2e-05,
+            'lr': 1e-04,
             'epochs': 15,
+            'wd': 0.05,
+            'bs': 32,
+            'dimension': 300,
+
+        },
+        {
+            'model_name': "bert-base-uncased",
+            'title': "withinapp_bert",
+            'embedding_type': "bert",
+            'setting': "contrastive",
+            'chunk_size': 512,
+            'overlap': 0,
+            'chunk_limit': 5,
+            'doc2vec_path': None,
+            'lr': 1e-04,
+            'epochs': 15,
+            'wd': 0.05,
+            'bs': 32,
             'dimension': 768,
+        },
+        {
+            'model_name': "answerdotai/ModernBERT-base",
+            'title': "withinapp_modernbert",
+            'embedding_type': "modernbert",
+            'setting': "contrastive",
+            'chunk_size': 8192,
+            'overlap': 0,
+            'chunk_limit': 5,
+            'doc2vec_path': None,
+            'lr': 1e-04,
+            'epochs': 15,
+            'wd': 0.05,
+            'bs': 32,
+            'dimension': 768,
+        },
+        {
+            'model_name': "microsoft/markuplm-base",
+            'title': "withinapp_markuplm",
+            'embedding_type': "markuplm",
+            'setting': "contrastive",
+            'chunk_size': 512,
+            'overlap': 0,
+            'chunk_limit': 5,
+            'doc2vec_path': None,
+            'lr': 1e-04,
+            'epochs': 15,
+            'wd': 0.05,
+            'bs': 32,
+            'dimension': 2304,
+        },
+        {
+            'model_name': None,
+            'title': "withinapp_doc2vec",
+            'embedding_type': "doc2vec",
+            'setting': "triplet",
+            'chunk_size': 512,
+            'overlap': 0,
+            'chunk_limit': 5,
+            'doc2vec_path': doc2vec_path,
+            'lr': 1e-03,
+            'epochs': 15,
+            'wd': 0.05,
+            'bs': 32,
+            'dimension': 300,
+        },
+        {
+            'model_name': "bert-base-uncased",
+            'title': "withinapp_bert",
+            'embedding_type': "bert",
+            'setting': "triplet",
+            'chunk_size': 512,
+            'overlap': 0,
+            'chunk_limit': 5,
+            'doc2vec_path': None,
+            'lr': 1e-03,
+            'epochs': 15,
+            'wd': 0.05,
+            'bs': 32,
+            'dimension': 768,
+        },
+        {
+            'model_name': "answerdotai/ModernBERT-base",
+            'title': "withinapp_modernbert",
+            'embedding_type': "modernbert",
+            'setting': "triplet",
+            'chunk_size': 8192,
+            'overlap': 0,
+            'chunk_limit': 5,
+            'doc2vec_path': None,
+            'lr': 1e-03,
+            'epochs': 15,
+            'wd': 0.05,
+            'bs': 32,
+            'dimension': 768,
+        },
+        {
+            'model_name': "microsoft/markuplm-base",
+            'title': "withinapp_markuplm",
+            'embedding_type': "markuplm",
+            'setting': "triplet",
+            'chunk_size': 512,
+            'overlap': 0,
+            'chunk_limit': 5,
+            'doc2vec_path': None,
+            'lr': 1e-03,
+            'epochs': 15,
+            'wd': 0.05,
+            'bs': 32,
+            'dimension': 2304,
         },
         {
             'model_name': None,
@@ -335,20 +344,39 @@ if __name__ == "__main__":
             'doc2vec_path': doc2vec_path,
             'lr': 2e-05,
             'epochs': 10,
+            'wd': 0.01,
+            'bs': 128,
             'dimension': 300,
         },
         {
-            'model_name': None,
-            'title': "acrossapp_doc2vec",
-            'embedding_type': "doc2vec",
-            'setting': "triplet",
+            'model_name': "bert-base-uncased",
+            'title': "acrossapp_bert",
+            'embedding_type': "bert",
+            'setting': "contrastive",
             'chunk_size': 512,
             'overlap': 0,
             'chunk_limit': 2,
-            'doc2vec_path': doc2vec_path,
-            'lr': 0.0001,
-            'epochs': 7,
-            'dimension': 300,
+            'doc2vec_path': None,
+            'lr': 2e-05,
+            'epochs': 10,
+            'wd': 0.01,
+            'bs': 128,
+            'dimension': 768,
+        },
+        {
+            'model_name': "answerdotai/ModernBERT-base",
+            'title': "acrossapp_modernbert",
+            'embedding_type': "modernbert",
+            'setting': "contrastive",
+            'chunk_size': 8192,
+            'overlap': 0,
+            'chunk_limit': 2,
+            'doc2vec_path': None,
+            'lr': 2e-05,
+            'epochs': 10,
+            'wd': 0.01,
+            'bs': 128,
+            'dimension': 768,
         },
         {
             'model_name': "microsoft/markuplm-base",
@@ -361,6 +389,53 @@ if __name__ == "__main__":
             'doc2vec_path': None,
             'lr': 2e-05,
             'epochs': 15,
+            'wd': 0.01,
+            'bs': 128,
+            'dimension': 768,
+        },
+        {
+            'model_name': None,
+            'title': "acrossapp_doc2vec",
+            'embedding_type': "doc2vec",
+            'setting': "triplet",
+            'chunk_size': 512,
+            'overlap': 0,
+            'chunk_limit': 2,
+            'doc2vec_path': doc2vec_path,
+            'lr': 0.0001,
+            'epochs': 7,
+            'wd': 0.01,
+            'bs': 128,
+            'dimension': 300,
+        },
+        {
+            'model_name': "bert-base-uncased",
+            'title': "acrossapp_bert",
+            'embedding_type': "bert",
+            'setting': "triplet",
+            'chunk_size': 512,
+            'overlap': 0,
+            'chunk_limit': 2,
+            'doc2vec_path': None,
+            'lr': 2e-05,
+            'epochs': 15,
+            'wd': 0.01,
+            'bs': 128,
+            'dimension': 768,
+        },
+        {
+            'model_name': "answerdotai/ModernBERT-base",
+            'title': "acrossapp_modernbert",
+            'embedding_type': "modernbert",
+            'setting': "triplet",
+            'chunk_size': 8192,
+            'overlap': 0,
+            'chunk_limit': 2,
+            'doc2vec_path': None,
+            'lr': 2e-05,
+            'epochs': 15,
+            'wd': 0.01,
+            'bs': 128,
             'dimension': 768,
         },
         {
@@ -374,13 +449,12 @@ if __name__ == "__main__":
             'doc2vec_path': None,
             'lr': 2e-05,
             'epochs': 12,
+            'wd': 0.01,
+            'bs': 128,
             'dimension': 768,
         },
     ]
 
-    # ---------------------------
-    #   Load All Pairs
-    # ---------------------------
     all_pairs = load_pairs_from_db(db_path, table_name, selected_apps)
     all_pairs_df = pd.DataFrame(all_pairs)
 
@@ -400,6 +474,8 @@ if __name__ == "__main__":
         lr           = cfg['lr']
         title        = cfg['title']
         dimension    = cfg['dimension']
+        weight_decay = cfg['wd']
+        batch_size   = cfg['bs']
 
         # For each app
         for app in selected_apps:
@@ -487,7 +563,7 @@ if __name__ == "__main__":
     #   Save Results
     # ---------------------------
     df = pd.DataFrame(results)
-    output_file = os.path.join(results_dir, "rq1", "pair-analysis", "snn_pair_analysis.xlsx")
+    output_file = os.path.join(results_dir, "rq1", "pair-analysis", "snn_pair_analysis_new.xlsx")
     df.to_excel(output_file, index=False)
     print(f"[Info] SNN pair analysis successfully completed. Results saved to: {output_file}")
 
