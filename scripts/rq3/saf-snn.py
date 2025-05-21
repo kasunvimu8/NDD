@@ -269,9 +269,9 @@ configurations = [
         'bs': 128,
     },
 ]
-title            = "acrossapp_modernbert"
-appname          = "petclinic" # appname is treated as within app -> target app and across app -> test app
-setting          = "triplet" # contrastive or triplet
+title            = "withinapp_bert"
+appname          = "phoenix" # appname is treated as within app -> target app and across app -> test app
+setting          = "contrastive" # contrastive or triplet
 
 current_configs   = [config for config in configurations if config['title'] == title]
 current_config    = current_configs[0] if (current_configs[0]['setting'] == 'contrastive' and setting == 'contrastive') else current_configs[1]
